@@ -1,6 +1,6 @@
 # Two-Player Web-Based Tic-Tac-Toe Game
 
-A responsive, lightweight, two-player web-based Tic-Tac-Toe game built with semantic HTML5, CSS3 Grid/Flexbox, and vanilla ES6+ JavaScript.
+A responsive, lightweight, accessible two-player web-based Tic-Tac-Toe game built with semantic HTML5, modern CSS3 Grid/Flexbox, and vanilla ES6+ JavaScript.
 
 ## Features
 - **Responsive Game Board**: Centered 3x3 grid accessible across desktop and mobile devices.
@@ -8,6 +8,12 @@ A responsive, lightweight, two-player web-based Tic-Tac-Toe game built with sema
 - **Win & Draw Detection**: Real-time evaluation of all 8 winning combinations (rows, columns, diagonals) with visual cell highlighting and draw detection.
 - **Score Tracking & Game Reset**: Track session scores across rounds with independent round restart and score reset buttons.
 - **Containerized Deployment**: Minimal `nginx:alpine` container configuration serving static assets on port `8080`.
+
+## Running Automated Tests
+Execute the unit test suite covering win/draw detection, move handling, board reset, and score tracking:
+```bash
+node test.js
+```
 
 ## Docker Usage
 
