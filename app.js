@@ -1,5 +1,6 @@
 /**
  * Tic-Tac-Toe Game Logic & UI Controller
+ * Handles board state, player turns, move validation, win/draw detection, and score tracking.
  */
 
 // Predefined constant array of 8 winning combinations:
@@ -64,16 +65,39 @@ function checkDraw(currentBoard = board) {
 
 /**
  * Handles cell click events.
- * Validates moves, checks win/draw condition, updates state and locks board upon completion.
- * @param {number} index - Index of clicked cell (0-8).
+ * Validates moves, checks win/draw condition, updates state, and manages turn transitions.
+ * Supports being called with either a cell index (number) or a DOM Event.
+ * @param {number|Event} targetOrIndex - Index of clicked cell (0-8) or click Event.
  */
-function handleCellClick(index) {
-  // If game is not active or cell is already populated, ignore click
-  if (!gameActive || board[index] !== '') {
+function handleCellClick(targetOrIndex) {
+  let index;
+  if (typeof targetOrIndex === 'number') {
+    index = targetOrIndex;
+  } else if (targetOrIndex && targetOrIndex.currentTarget) {
+    const elem = targetOrIndex.currentTarget;
+    index = parseInt(elem.getAttribute('data-cell-index') || elem.getAttribute('data-index'), 10);
+  } else if (targetOrIndex && targetOrIndex.target) {
+    const elem = targetOrIndex.target;
+    index = parseInt(elem.getAttribute('data-cell-index') || elem.getAttribute('data-index'), 10);
+  }
+
+  // Move validation: ignore clicks if game is inactive, invalid index, or cell already occupied
+  if (!gameActive || index === undefined || isNaN(index) || index < 0 || index > 8 || board[index] !== '') {
     return;
   }
 
-  // Make move
+  // Execute valid move
+  makeMove(index);
+}
+
+/**
+ * Executes a valid move:
+ * - Updates in-memory board state array
+ * - Renders cell DOM with symbol and styling class
+ * - Evaluates win or draw condition, or switches player turn
+ * @param {number} index
+ */
+function makeMove(index) {
   board[index] = currentPlayer;
   renderCell(index, currentPlayer);
 
@@ -90,8 +114,16 @@ function handleCellClick(index) {
     return;
   }
 
-  // Switch player turn
+  // Valid move completed and game continues: switch player turn alternately
   switchTurn();
+}
+
+/**
+ * Switches current player turn and updates status indicator.
+ */
+function switchTurn() {
+  currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+  updateTurnIndicatorUI();
 }
 
 /**
@@ -108,7 +140,7 @@ function handleWin(winResult) {
   highlightWinningCells(winResult.combination);
 
   // Announce the winner clearly in status banner
-  const statusBanner = document.getElementById('status-banner');
+  const statusBanner = document.getElementById('status-banner') || document.getElementById('status');
   if (statusBanner) {
     statusBanner.className = 'status-banner winner-banner';
     statusBanner.innerHTML = `🎉 Player <span class="player-indicator player-${winResult.winner.toLowerCase()}">${winResult.winner}</span> Wins!`;
@@ -128,7 +160,7 @@ function handleDraw() {
   updateScoreboardUI();
 
   // Announce draw in status banner
-  const statusBanner = document.getElementById('status-banner');
+  const statusBanner = document.getElementById('status-banner') || document.getElementById('status');
   if (statusBanner) {
     statusBanner.className = 'status-banner draw-banner';
     statusBanner.textContent = `🤝 Game Ended in a Draw!`;
@@ -139,15 +171,7 @@ function handleDraw() {
 }
 
 /**
- * Switches current player turn and updates status indicator.
- */
-function switchTurn() {
-  currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-  updateTurnIndicatorUI();
-}
-
-/**
- * Highlights winning combination cells with CSS class.
+ * Highlights winning combination cells with CSS classes.
  * @param {number[]} combination
  */
 function highlightWinningCells(combination) {
@@ -155,7 +179,7 @@ function highlightWinningCells(combination) {
   const cells = document.querySelectorAll('.cell');
   combination.forEach(idx => {
     if (cells[idx]) {
-      cells[idx].classList.add('winner');
+      cells[idx].classList.add('winner', 'winning-cell');
     }
   });
 }
@@ -183,6 +207,8 @@ function renderCell(index, player) {
   if (cell) {
     cell.textContent = player;
     cell.classList.add(player.toLowerCase());
+    cell.setAttribute('disabled', 'true');
+    cell.setAttribute('aria-label', `Cell ${index + 1}, ${player}`);
   }
 }
 
@@ -190,7 +216,7 @@ function renderCell(index, player) {
  * Updates current turn display banner.
  */
 function updateTurnIndicatorUI() {
-  const statusBanner = document.getElementById('status-banner');
+  const statusBanner = document.getElementById('status-banner') || document.getElementById('status');
   if (statusBanner) {
     statusBanner.className = 'status-banner';
     statusBanner.innerHTML = `Current Turn: <span id="current-player" class="player-indicator player-${currentPlayer.toLowerCase()}">${currentPlayer}</span>`;
@@ -204,7 +230,7 @@ function updateScoreboardUI() {
   if (typeof document === 'undefined') return;
   const scoreXElem = document.getElementById('score-x');
   const scoreOElem = document.getElementById('score-o');
-  const scoreDrawsElem = document.getElementById('score-draws');
+  const scoreDrawsElem = document.getElementById('score-draws') || document.getElementById('score-ties');
 
   if (scoreXElem) scoreXElem.textContent = scores.X;
   if (scoreOElem) scoreOElem.textContent = scores.O;
@@ -221,10 +247,11 @@ function restartGame() {
 
   if (typeof document !== 'undefined') {
     const cells = document.querySelectorAll('.cell');
-    cells.forEach(cell => {
+    cells.forEach((cell, idx) => {
       cell.textContent = '';
       cell.className = 'cell';
       cell.removeAttribute('disabled');
+      cell.setAttribute('aria-label', `Cell ${idx + 1}`);
     });
     updateTurnIndicatorUI();
   }
@@ -241,36 +268,61 @@ function resetScore() {
   restartGame();
 }
 
-// Attach DOM Event Listeners if running in browser
-if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-  document.addEventListener('DOMContentLoaded', () => {
-    const cells = document.querySelectorAll('.cell');
-    cells.forEach(cell => {
-      cell.addEventListener('click', () => {
-        const index = parseInt(cell.getAttribute('data-cell-index'), 10);
-        handleCellClick(index);
-      });
-    });
-
-    const restartBtn = document.getElementById('restart-btn');
-    if (restartBtn) {
-      restartBtn.addEventListener('click', restartGame);
-    }
-
-    const resetScoreBtn = document.getElementById('reset-score-btn');
-    if (resetScoreBtn) {
-      resetScoreBtn.addEventListener('click', resetScore);
-    }
+/**
+ * Initializes DOM Event Listeners when the document is ready.
+ */
+function initApp() {
+  const cells = document.querySelectorAll('.cell');
+  cells.forEach(cell => {
+    cell.addEventListener('click', handleCellClick);
   });
+
+  const restartBtn = document.getElementById('restart-btn');
+  if (restartBtn) {
+    restartBtn.addEventListener('click', restartGame);
+  }
+
+  const resetScoreBtn = document.getElementById('reset-score-btn');
+  if (resetScoreBtn) {
+    resetScoreBtn.addEventListener('click', resetScore);
+  }
+
+  updateTurnIndicatorUI();
+  updateScoreboardUI();
 }
 
-// Export for unit tests
+// Attach DOM Event Listeners if running in browser
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+  } else {
+    initApp();
+  }
+
+  // Global window exposure for testability / external consumers
+  window.TicTacToe = {
+    WINNING_COMBINATIONS,
+    getBoard: () => [...board],
+    getCurrentPlayer: () => currentPlayer,
+    isGameActive: () => gameActive,
+    getScores: () => ({ ...scores }),
+    handleCellClick,
+    makeMove,
+    restartGame,
+    resetScore,
+    resetScores: resetScore
+  };
+}
+
+// Export for unit tests (Node.js environment)
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     WINNING_COMBINATIONS,
     checkWin,
     checkDraw,
     handleCellClick,
+    makeMove,
+    switchTurn,
     restartGame,
     resetScore,
     getBoard: () => board,
