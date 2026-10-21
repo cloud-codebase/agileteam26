@@ -3,19 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A simple, responsive two-player web-based Tic-Tac-Toe game.">
   <title>Tic-Tac-Toe Game</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="game-container">
     <header class="game-header">
-      <h1>Tic-Tac-Toe</h1>
+      <h1 class="game-title">Tic-Tac-Toe</h1>
       <div id="status-banner" class="status-banner" role="status" aria-live="polite">
         Current Turn: <span id="current-player" class="player-indicator player-x">X</span>
       </div>
     </header>
 
-    <div class="scoreboard" id="scoreboard" aria-label="Scoreboard">
+    <section class="scoreboard" id="scoreboard" aria-label="Scoreboard">
       <div class="score-card player-x">
         <span class="label">Player X</span>
         <span class="score" id="score-x">0</span>
@@ -28,9 +29,9 @@
         <span class="label">Player O</span>
         <span class="score" id="score-o">0</span>
       </div>
-    </div>
+    </section>
 
-    <main>
+    <main class="board-container">
       <div class="board game-board" id="board" role="grid" aria-label="Tic-Tac-Toe Board">
         <button class="cell" data-cell-index="0" data-index="0" role="gridcell" aria-label="Row 1, Column 1"></button>
         <button class="cell" data-cell-index="1" data-index="1" role="gridcell" aria-label="Row 1, Column 2"></button>
@@ -44,10 +45,10 @@
       </div>
     </main>
 
-    <div class="controls">
-      <button id="restart-btn" class="btn btn-primary">Restart Game</button>
-      <button id="reset-score-btn" class="btn btn-secondary">Reset Score</button>
-    </div>
+    <footer class="controls">
+      <button id="restart-btn" class="btn btn-primary" type="button">Restart Game</button>
+      <button id="reset-score-btn" class="btn btn-secondary" type="button">Reset Score</button>
+    </footer>
   </div>
 
   <script src="app.js"></script>
