@@ -22,6 +22,11 @@ const statusDisplay = document.getElementById('status');
 const cells = document.querySelectorAll('.cell');
 const resetButton = document.getElementById('reset-button');
 
+// Status messages
+const currentPlayerTurnMessage = () => `Player ${currentPlayer}'s turn`;
+const playerWonMessage = (player) => `Player ${player} wins!`;
+const drawMessage = () => "Game ended in a draw!";
+
 // Helper to check for a winning combination
 function checkWin() {
   for (let i = 0; i < WINNING_COMBINATIONS.length; i++) {
@@ -44,6 +49,7 @@ function checkDraw() {
 
 // Update the status text
 function updateStatus(message, statusClass = '') {
+  if (!statusDisplay) return;
   statusDisplay.textContent = message;
   statusDisplay.className = 'status-display';
   if (statusClass) {
@@ -51,17 +57,18 @@ function updateStatus(message, statusClass = '') {
   }
 }
 
-// Handle cell click
+// Handle cell click for turn-based moves
 function handleCellClick(event) {
   const clickedCell = event.target;
-  const cellIndex = parseInt(clickedCell.getAttribute('data-index'), 10);
+  const rawIndex = clickedCell.getAttribute('data-index') || clickedCell.getAttribute('data-cell-index');
+  const cellIndex = parseInt(rawIndex, 10);
 
   // If cell is already filled or game is not active, ignore click
-  if (boardState[cellIndex] !== '' || !isGameActive) {
+  if (isNaN(cellIndex) || boardState[cellIndex] !== '' || !isGameActive) {
     return;
   }
 
-  // Record player move
+  // Record player move in state and DOM
   boardState[cellIndex] = currentPlayer;
   clickedCell.textContent = currentPlayer;
   clickedCell.classList.add(currentPlayer.toLowerCase());
@@ -71,11 +78,14 @@ function handleCellClick(event) {
   const winResult = checkWin();
   if (winResult) {
     isGameActive = false;
-    updateStatus(`Player ${winResult.winner} wins!`, 'winner');
+    updateStatus(playerWonMessage(winResult.winner), 'winner');
 
     // Highlight winning cells
     winResult.line.forEach(index => {
-      cells[index].classList.add('winning');
+      const winCell = document.querySelector(`.cell[data-index="${index}"], .cell[data-cell-index="${index}"]`);
+      if (winCell) {
+        winCell.classList.add('winning', 'winning-cell');
+      }
     });
 
     // Disable remaining empty cells
@@ -90,13 +100,13 @@ function handleCellClick(event) {
   // Check for draw condition
   if (checkDraw()) {
     isGameActive = false;
-    updateStatus("Game ended in a draw!", 'draw');
+    updateStatus(drawMessage(), 'draw');
     return;
   }
 
   // Alternate player turn
   currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-  updateStatus(`Player ${currentPlayer}'s turn`);
+  updateStatus(currentPlayerTurnMessage());
 }
 
 // Reset the game to initial state
@@ -105,7 +115,7 @@ function resetGame() {
   currentPlayer = 'X';
   isGameActive = true;
 
-  updateStatus("Player X's turn");
+  updateStatus(currentPlayerTurnMessage());
 
   cells.forEach((cell, index) => {
     cell.textContent = '';
@@ -116,12 +126,23 @@ function resetGame() {
 }
 
 // Attach event listeners
-cells.forEach(cell => {
-  cell.addEventListener('click', handleCellClick);
-});
+function initGame() {
+  updateStatus(currentPlayerTurnMessage());
 
-if (resetButton) {
-  resetButton.addEventListener('click', resetGame);
+  cells.forEach(cell => {
+    cell.addEventListener('click', handleCellClick);
+  });
+
+  if (resetButton) {
+    resetButton.addEventListener('click', resetGame);
+  }
+}
+
+// Run initialization once DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initGame);
+} else {
+  initGame();
 }
 
 // Export for testing in Node / CommonJS environments if applicable
@@ -131,6 +152,7 @@ if (typeof module !== 'undefined' && module.exports) {
     boardState,
     checkWin,
     checkDraw,
-    resetGame
+    resetGame,
+    handleCellClick
   };
 }

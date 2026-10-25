@@ -7,11 +7,12 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   background-color: #f0f2f5;
-  color: #333;
+  color: #333333;
   min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
+  padding: 1rem;
 }
 
 .game-container {
@@ -19,12 +20,12 @@ body {
   padding: 2rem;
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  max-width: 420px;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1.5rem;
-  max-width: 420px;
-  width: 90%;
 }
 
 header {
@@ -38,23 +39,27 @@ h1 {
   margin-bottom: 0.75rem;
 }
 
-.status-display {
+.status-display,
+.status-message {
   font-size: 1.25rem;
   font-weight: 600;
   color: #4a5568;
   min-height: 1.75rem;
 }
 
-.status-display.winner {
+.status-display.winner,
+.status-message.winner {
   color: #2b6cb0;
   animation: pulse 0.5s ease-in-out infinite alternate;
 }
 
-.status-display.draw {
+.status-display.draw,
+.status-message.draw {
   color: #d69e2e;
 }
 
-.board {
+.board,
+.game-board {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
@@ -78,10 +83,12 @@ h1 {
   cursor: pointer;
   transition: background-color 0.2s, transform 0.1s;
   user-select: none;
+  outline: none;
 }
 
 .cell:hover:not(:disabled) {
   background-color: #edf2f7;
+  transform: scale(1.02);
 }
 
 .cell:focus-visible {
@@ -90,14 +97,15 @@ h1 {
 }
 
 .cell.x {
-  color: #e53e3e;
+  color: #2563eb;
 }
 
 .cell.o {
-  color: #3182ce;
+  color: #dc2626;
 }
 
-.cell.winning {
+.cell.winning,
+.cell.winning-cell {
   background-color: #c6f6d5;
   color: #22543d;
   animation: winner-highlight 0.5s ease-in-out;
@@ -127,10 +135,15 @@ footer {
 
 .reset-button:hover {
   background-color: #2b6cb0;
+  transform: translateY(-1px);
 }
 
 .reset-button:active {
   transform: scale(0.98);
+}
+
+.reset-button:focus-visible {
+  outline: 3px solid #93c5fd;
 }
 
 @keyframes winner-highlight {
