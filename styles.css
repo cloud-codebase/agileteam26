@@ -28,12 +28,14 @@ body {
   gap: 1.5rem;
 }
 
-header {
+header,
+.game-header {
   text-align: center;
   width: 100%;
 }
 
-h1 {
+h1,
+.game-title {
   font-size: 2rem;
   color: #1a202c;
   margin-bottom: 0.75rem;
@@ -56,6 +58,13 @@ h1 {
 .status-display.draw,
 .status-message.draw {
   color: #d69e2e;
+}
+
+main,
+.game-main {
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 .board,
@@ -115,13 +124,15 @@ h1 {
   cursor: default;
 }
 
-footer {
+footer,
+.game-controls {
   width: 100%;
   display: flex;
   justify-content: center;
 }
 
-.reset-button {
+.reset-button,
+.btn-reset {
   background-color: #3182ce;
   color: #ffffff;
   border: none;
@@ -133,16 +144,19 @@ footer {
   transition: background-color 0.2s, transform 0.1s;
 }
 
-.reset-button:hover {
+.reset-button:hover,
+.btn-reset:hover {
   background-color: #2b6cb0;
   transform: translateY(-1px);
 }
 
-.reset-button:active {
+.reset-button:active,
+.btn-reset:active {
   transform: scale(0.98);
 }
 
-.reset-button:focus-visible {
+.reset-button:focus-visible,
+.btn-reset:focus-visible {
   outline: 3px solid #93c5fd;
 }
 
@@ -164,5 +178,37 @@ footer {
   }
   to {
     transform: scale(1.03);
+  }
+}
+
+@media (max-width: 480px) {
+  .game-container {
+    padding: 1.25rem;
+  }
+
+  h1,
+  .game-title {
+    font-size: 1.75rem;
+  }
+
+  .status-display,
+  .status-message {
+    font-size: 1.1rem;
+  }
+
+  .board,
+  .game-board {
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .cell {
+    font-size: 2.25rem;
+  }
+
+  .reset-button,
+  .btn-reset {
+    width: 100%;
+    padding: 0.875rem;
   }
 }
