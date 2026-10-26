@@ -1,6 +1,6 @@
 @import url('styles.css');
 
-/* Additional enhancements and styling support */
+/* Enhanced styling and fallback support for Tic-Tac-Toe */
 :root {
   --color-x: #2563eb;
   --color-o: #dc2626;
@@ -8,17 +8,34 @@
   --color-highlight-bg: #c6f6d5;
 }
 
-.status .player-x {
+.status .player-x,
+.status-display .player-x,
+.status-indicator.player-x {
   color: var(--color-x);
 }
 
-.status .player-o {
+.status .player-o,
+.status-display .player-o,
+.status-indicator.player-o {
   color: var(--color-o);
 }
 
 .cell.winner,
+.cell.winning,
+.cell.winning-cell,
 .cell.highlight {
-  background-color: var(--color-highlight-bg);
-  color: var(--color-highlight);
-  animation: pulse 1s infinite alternate;
+  background-color: var(--color-highlight-bg) !important;
+  color: var(--color-highlight) !important;
+  animation: pulse-win 0.8s infinite alternate ease-in-out;
+}
+
+@keyframes pulse-win {
+  from {
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+  }
+  to {
+    transform: scale(1.04);
+    box-shadow: 0 0 16px rgba(34, 197, 94, 0.8);
+  }
 }

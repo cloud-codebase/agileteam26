@@ -4,19 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="A responsive, two-player web-based Tic-Tac-Toe game.">
-  <title>Tic Tac Toe</title>
+  <title>Tic-Tac-Toe</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="game-container">
     <header class="game-header">
-      <h1 class="game-title">Tic Tac Toe</h1>
-      <div id="status" class="status-display status" role="status" aria-live="polite">Player X's turn</div>
+      <h1 class="game-title">Tic-Tac-Toe</h1>
+      <div id="status" class="status-display status status-indicator" role="status" aria-live="polite" data-testid="status">Player X's turn</div>
     </header>
 
     <main class="game-main">
-      <div id="board" class="board game-board" role="grid" aria-label="Tic Tac Toe board">
+      <div id="board" class="board game-board" role="grid" aria-label="Tic-Tac-Toe board">
         <button class="cell" id="cell-0" role="gridcell" data-index="0" data-cell-index="0" aria-label="Cell 1"></button>
         <button class="cell" id="cell-1" role="gridcell" data-index="1" data-cell-index="1" aria-label="Cell 2"></button>
         <button class="cell" id="cell-2" role="gridcell" data-index="2" data-cell-index="2" aria-label="Cell 3"></button>
@@ -29,8 +29,8 @@
       </div>
     </main>
 
-    <footer class="game-controls actions">
-      <button id="reset-button" class="reset-button reset-btn btn-reset" type="button">Reset Game</button>
+    <footer class="game-controls controls actions">
+      <button id="reset-button" class="reset-button reset-btn btn-reset restart-btn" type="button">Reset Game</button>
     </footer>
   </div>
 
