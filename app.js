@@ -20,7 +20,7 @@ let isGameActive = true;
 // DOM Elements
 const statusDisplay = typeof document !== 'undefined' ? document.getElementById('status') : null;
 const cells = typeof document !== 'undefined' ? document.querySelectorAll('.cell') : [];
-const resetButton = typeof document !== 'undefined' ? document.getElementById('reset-button') : null;
+const resetButton = typeof document !== 'undefined' ? (document.getElementById('reset-button') || document.getElementById('reset-btn')) : null;
 
 // Status messages
 const currentPlayerTurnMessage = () => `Player ${currentPlayer}'s turn`;

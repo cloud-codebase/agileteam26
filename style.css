@@ -1,1 +1,24 @@
 @import url('styles.css');
+
+/* Additional enhancements and styling support */
+:root {
+  --color-x: #2563eb;
+  --color-o: #dc2626;
+  --color-highlight: #22543d;
+  --color-highlight-bg: #c6f6d5;
+}
+
+.status .player-x {
+  color: var(--color-x);
+}
+
+.status .player-o {
+  color: var(--color-o);
+}
+
+.cell.winner,
+.cell.highlight {
+  background-color: var(--color-highlight-bg);
+  color: var(--color-highlight);
+  animation: pulse 1s infinite alternate;
+}
