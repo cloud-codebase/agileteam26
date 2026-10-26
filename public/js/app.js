@@ -1,6 +1,13 @@
 /**
  * CineScope — Movie Database & Community Reviews Application
  * Pure Vanilla JavaScript (ES6+)
+ * Integrates with Backend REST API:
+ *   - GET  /api/movies
+ *   - GET  /api/movies/:id
+ *   - POST /api/movies/:id/ratings
+ *   - POST /api/movies/:id/reviews
+ *   - POST /api/movies/:id/comments
+ *   - GET  /api/movies/genres
  */
 
 // ============================================================================
@@ -13,40 +20,41 @@ const DEFAULT_MOVIES = [
     year: 2010,
     director: "Christopher Nolan",
     duration: "148 min",
+    genre: ["Sci-Fi", "Action", "Adventure"],
     genres: ["Sci-Fi", "Action", "Adventure"],
     synopsis: "A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O., but his tragic past may doom the project and his team to disaster.",
-    poster: "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=600&q=80",
-    rating: 4.8,
-    ratingsCount: 142,
+    posterUrl: "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=600&q=80",
+    averageRating: 4.8,
+    totalRatings: 142,
     ratings: [5, 5, 4, 5, 5],
     reviews: [
       {
         id: "rev-1",
         author: "Sarah Connor",
         rating: 5,
-        text: "An absolute masterpiece of modern cinema. Mind-bending concept executed to perfection.",
-        date: "2025-01-10"
+        content: "An absolute masterpiece of modern cinema. Mind-bending concept executed to perfection.",
+        createdAt: "2025-01-10T10:00:00.000Z"
       },
       {
         id: "rev-2",
         author: "Neo99",
         rating: 4,
-        text: "Visually stunning and the Hans Zimmer score is phenomenal. Highly recommended!",
-        date: "2025-02-01"
+        content: "Visually stunning and the Hans Zimmer score is phenomenal. Highly recommended!",
+        createdAt: "2025-02-01T12:00:00.000Z"
       }
     ],
     comments: [
       {
         id: "com-1",
         author: "CinephileDan",
-        text: "Did the spinning top fall at the end? What's your theory?",
-        date: "2025-02-14"
+        content: "Did the spinning top fall at the end? What's your theory?",
+        createdAt: "2025-02-14T14:30:00.000Z"
       },
       {
         id: "com-2",
         author: "Maya Lin",
-        text: "The sound design in IMAX was simply unforgettable.",
-        date: "2025-02-15"
+        content: "The sound design in IMAX was simply unforgettable.",
+        createdAt: "2025-02-15T16:45:00.000Z"
       }
     ]
   },
@@ -56,27 +64,28 @@ const DEFAULT_MOVIES = [
     year: 1994,
     director: "Frank Darabont",
     duration: "142 min",
+    genre: ["Drama", "Crime"],
     genres: ["Drama", "Crime"],
     synopsis: "Over the course of several years, two convicts form a friendship, seeking solace and, eventually, redemption through basic compassion.",
-    poster: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=600&q=80",
-    rating: 4.9,
-    ratingsCount: 310,
+    posterUrl: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=600&q=80",
+    averageRating: 4.9,
+    totalRatings: 310,
     ratings: [5, 5, 5, 5, 4],
     reviews: [
       {
         id: "rev-3",
         author: "Morgan Freeman Fan",
         rating: 5,
-        text: "Hope is a good thing, maybe the best of things, and no good thing ever dies. Timeless.",
-        date: "2024-12-20"
+        content: "Hope is a good thing, maybe the best of things, and no good thing ever dies. Timeless.",
+        createdAt: "2024-12-20T08:00:00.000Z"
       }
     ],
     comments: [
       {
         id: "com-3",
         author: "Red_Ellis",
-        text: "One of the few movies that gets better with every single rewatch.",
-        date: "2025-01-05"
+        content: "One of the few movies that gets better with every single rewatch.",
+        createdAt: "2025-01-05T09:15:00.000Z"
       }
     ]
   },
@@ -86,27 +95,28 @@ const DEFAULT_MOVIES = [
     year: 2008,
     director: "Christopher Nolan",
     duration: "152 min",
+    genre: ["Action", "Crime", "Drama"],
     genres: ["Action", "Crime", "Drama"],
     synopsis: "When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests of his ability to fight injustice.",
-    poster: "https://images.unsplash.com/photo-1509281373149-e957c6296406?auto=format&fit=crop&w=600&q=80",
-    rating: 4.9,
-    ratingsCount: 285,
+    posterUrl: "https://images.unsplash.com/photo-1509281373149-e957c6296406?auto=format&fit=crop&w=600&q=80",
+    averageRating: 4.9,
+    totalRatings: 285,
     ratings: [5, 5, 5, 4, 5],
     reviews: [
       {
         id: "rev-4",
         author: "BruceW",
         rating: 5,
-        text: "Heath Ledger's Joker is legendary. The pacing, atmosphere, and tension are unrivaled.",
-        date: "2025-01-18"
+        content: "Heath Ledger's Joker is legendary. The pacing, atmosphere, and tension are unrivaled.",
+        createdAt: "2025-01-18T18:00:00.000Z"
       }
     ],
     comments: [
       {
         id: "com-4",
         author: "Gordon_Jim",
-        text: "The interrogation scene is the finest dramatic acting in comic book cinema.",
-        date: "2025-02-03"
+        content: "The interrogation scene is the finest dramatic acting in comic book cinema.",
+        createdAt: "2025-02-03T11:20:00.000Z"
       }
     ]
   },
@@ -116,27 +126,28 @@ const DEFAULT_MOVIES = [
     year: 2014,
     director: "Christopher Nolan",
     duration: "169 min",
+    genre: ["Sci-Fi", "Adventure", "Drama"],
     genres: ["Sci-Fi", "Adventure", "Drama"],
     synopsis: "When Earth becomes uninhabitable in the future, a farmer and ex-NASA pilot, Joseph Cooper, is tasked to pilot a spacecraft, along with a team of researchers, to find a new planet for humans.",
-    poster: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=600&q=80",
-    rating: 4.7,
-    ratingsCount: 198,
+    posterUrl: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=600&q=80",
+    averageRating: 4.7,
+    totalRatings: 198,
     ratings: [5, 4, 5, 5, 4],
     reviews: [
       {
         id: "rev-5",
         author: "Cooper_J",
         rating: 5,
-        text: "Emotionally devastating and scientifically awe-inspiring. Love transcends time and space.",
-        date: "2025-01-22"
+        content: "Emotionally devastating and scientifically awe-inspiring. Love transcends time and space.",
+        createdAt: "2025-01-22T20:10:00.000Z"
       }
     ],
     comments: [
       {
         id: "com-5",
         author: "Murph",
-        text: "That docking scene still gives me goosebumps every time.",
-        date: "2025-02-10"
+        content: "That docking scene still gives me goosebumps every time.",
+        createdAt: "2025-02-10T22:00:00.000Z"
       }
     ]
   },
@@ -146,27 +157,28 @@ const DEFAULT_MOVIES = [
     year: 1994,
     director: "Quentin Tarantino",
     duration: "154 min",
+    genre: ["Crime", "Drama"],
     genres: ["Crime", "Drama"],
     synopsis: "The lives of two mob hitmen, a boxer, a gangster and his wife, and a pair of diner bandits intertwine in four tales of violence and redemption.",
-    poster: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=600&q=80",
-    rating: 4.7,
-    ratingsCount: 220,
+    posterUrl: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=600&q=80",
+    averageRating: 4.7,
+    totalRatings: 220,
     ratings: [5, 4, 5, 5, 4],
     reviews: [
       {
         id: "rev-6",
         author: "Jules_W",
         rating: 5,
-        text: "Iconic dialogues, eccentric soundtrack, and non-linear storytelling at its finest.",
-        date: "2025-01-12"
+        content: "Iconic dialogues, eccentric soundtrack, and non-linear storytelling at its finest.",
+        createdAt: "2025-01-12T15:00:00.000Z"
       }
     ],
     comments: [
       {
         id: "com-6",
         author: "VincentVega",
-        text: "What do they call a Quarter Pounder with cheese in Paris?",
-        date: "2025-01-30"
+        content: "What do they call a Quarter Pounder with cheese in Paris?",
+        createdAt: "2025-01-30T17:40:00.000Z"
       }
     ]
   },
@@ -176,27 +188,28 @@ const DEFAULT_MOVIES = [
     year: 2001,
     director: "Hayao Miyazaki",
     duration: "125 min",
-    genres: ["Animation", "Adventure"],
+    genre: ["Animation", "Adventure", "Fantasy"],
+    genres: ["Animation", "Adventure", "Fantasy"],
     synopsis: "During her family's move to the suburbs, a sullen 10-year-old girl wanders into a world ruled by gods, witches, and spirits, and where humans are changed into beasts.",
-    poster: "https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=600&q=80",
-    rating: 4.8,
-    ratingsCount: 165,
+    posterUrl: "https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=600&q=80",
+    averageRating: 4.8,
+    totalRatings: 165,
     ratings: [5, 5, 5, 4, 5],
     reviews: [
       {
         id: "rev-7",
         author: "ChihiroFan",
         rating: 5,
-        text: "Studio Ghibli's crown jewel. Rich in symbolism, breathtaking art, and pure imagination.",
-        date: "2025-02-04"
+        content: "Studio Ghibli's crown jewel. Rich in symbolism, breathtaking art, and pure imagination.",
+        createdAt: "2025-02-04T13:20:00.000Z"
       }
     ],
     comments: [
       {
         id: "com-7",
         author: "Haku",
-        text: "Joe Hisaishi's score 'One Summer's Day' is perfection.",
-        date: "2025-02-11"
+        content: "Joe Hisaishi's score 'One Summer's Day' is perfection.",
+        createdAt: "2025-02-11T19:00:00.000Z"
       }
     ]
   },
@@ -206,64 +219,66 @@ const DEFAULT_MOVIES = [
     year: 2019,
     director: "Bong Joon-ho",
     duration: "132 min",
+    genre: ["Drama", "Thriller"],
     genres: ["Drama", "Thriller"],
     synopsis: "Greed and class discrimination threaten the newly formed symbiotic relationship between the wealthy Park family and the destitute Kim clan.",
-    poster: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=600&q=80",
-    rating: 4.6,
-    ratingsCount: 175,
+    posterUrl: "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=600&q=80",
+    averageRating: 4.6,
+    totalRatings: 175,
     ratings: [5, 4, 5, 4, 5],
     reviews: [
       {
         id: "rev-8",
         author: "FilmBuffK",
         rating: 5,
-        text: "Masterfully crafted social thriller. Deserved every single Oscar it won.",
-        date: "2025-02-08"
+        content: "Masterfully crafted social thriller. Deserved every single Oscar it won.",
+        createdAt: "2025-02-08T14:15:00.000Z"
       }
     ],
     comments: [
       {
         id: "com-8",
         author: "Jessica_Illinois",
-        text: "The transition between the first and second half of the movie is astonishing.",
-        date: "2025-02-12"
+        content: "The transition between the first and second half of the movie is astonishing.",
+        createdAt: "2025-02-12T18:30:00.000Z"
       }
     ]
   },
   {
     id: "8",
-    title: "Casablanca",
-    year: 1942,
-    director: "Michael Curtiz",
-    duration: "102 min",
-    genres: ["Romance", "Drama"],
-    synopsis: "A cynical expatriate American cafe owner struggles to decide whether or not to help his former lover and her fugitive husband escape the Nazis in French Morocco.",
-    poster: "https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?auto=format&fit=crop&w=600&q=80",
-    rating: 4.5,
-    ratingsCount: 110,
-    ratings: [5, 4, 4, 5, 4],
+    title: "The Matrix",
+    year: 1999,
+    director: "Lana Wachowski, Lilly Wachowski",
+    duration: "136 min",
+    genre: ["Sci-Fi", "Action"],
+    genres: ["Sci-Fi", "Action"],
+    synopsis: "When a beautiful stranger leads computer hacker Neo to a forbidding underworld, he discovers the shocking truth--the life he knows is the elaborate deception of an evil cyber-intelligence.",
+    posterUrl: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=600&q=80",
+    averageRating: 4.9,
+    totalRatings: 240,
+    ratings: [5, 5, 5, 5, 4],
     reviews: [
       {
         id: "rev-9",
-        author: "Rick_Blaine",
+        author: "Morpheus",
         rating: 5,
-        text: "Here's looking at you, kid. One of the greatest screenplays ever written.",
-        date: "2025-01-01"
+        content: "Take the red pill. A timeless cyberpunk masterpiece that redefined action cinema.",
+        createdAt: "2025-01-01T12:00:00.000Z"
       }
     ],
     comments: [
       {
         id: "com-9",
-        author: "Ilsa_Lund",
-        text: "Play it once, Sam. For old times' sake.",
-        date: "2025-01-28"
+        author: "Trinity",
+        content: "Dodge this. Iconic from beginning to end.",
+        createdAt: "2025-01-28T16:00:00.000Z"
       }
     ]
   }
 ];
 
 // ============================================================================
-// Application State & Controller
+// Application Controller
 // ============================================================================
 class MovieApp {
   constructor() {
@@ -272,9 +287,9 @@ class MovieApp {
     this.apiAvailable = false;
     this.apiBaseUrl = '/api';
 
-    // Form states
+    // Interactive star ratings state
     this.selectedReviewRating = 5;
-    this.selectedQuickRating = 0;
+    this.userPreferredName = localStorage.getItem('cinescope_username') || '';
 
     // DOM Elements
     this.movieGrid = document.getElementById('movie-grid');
@@ -300,6 +315,7 @@ class MovieApp {
   async init() {
     this.bindEvents();
     await this.loadMovies();
+    await this.loadGenres();
     this.render();
   }
 
@@ -357,19 +373,37 @@ class MovieApp {
       if (response.ok) {
         const data = await response.json();
         if (Array.isArray(data) && data.length > 0) {
-          this.movies = data;
+          this.movies = data.map(m => this.normalizeMovie(m));
           this.apiAvailable = true;
           this.updateApiStatus(true);
           return;
         }
       }
-      throw new Error('API returned non-array or empty list');
+      throw new Error('API returned empty or non-array response');
     } catch (err) {
-      // Graceful fallback to client-side data
-      console.info('Backend REST API not reachable or empty. Using in-memory client seed data.', err.message);
-      this.movies = JSON.parse(JSON.stringify(DEFAULT_MOVIES));
+      console.info('Backend API not responding; using fallback store.', err.message);
+      this.movies = DEFAULT_MOVIES.map(m => this.normalizeMovie(m));
       this.apiAvailable = false;
       this.updateApiStatus(false);
+    }
+  }
+
+  async loadGenres() {
+    if (!this.apiAvailable) return;
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/movies/genres`);
+      if (response.ok) {
+        const genres = await response.json();
+        if (Array.isArray(genres) && genres.length > 0) {
+          // Keep current selection
+          const currentVal = this.genreSelect.value;
+          this.genreSelect.innerHTML = `<option value="">All Genres</option>` +
+            genres.map(g => `<option value="${this.escapeHTML(g)}">${this.escapeHTML(g)}</option>`).join('');
+          this.genreSelect.value = currentVal;
+        }
+      }
+    } catch (e) {
+      // Keep static genres in HTML
     }
   }
 
@@ -382,6 +416,33 @@ class MovieApp {
       this.apiStatusBadge.className = 'badge badge-info';
       this.apiStatusBadge.textContent = 'In-Memory Store (Local)';
     }
+  }
+
+  normalizeMovie(m) {
+    const genres = Array.isArray(m.genre) ? m.genre : (Array.isArray(m.genres) ? m.genres : (m.genre ? [m.genre] : []));
+    const poster = m.posterUrl || m.poster || '';
+    const rating = m.averageRating !== undefined ? Number(m.averageRating) : (m.rating !== undefined ? Number(m.rating) : 0);
+    const ratingsCount = m.totalRatings !== undefined ? Number(m.totalRatings) : (m.ratingsCount !== undefined ? Number(m.ratingsCount) : (Array.isArray(m.ratings) ? m.ratings.length : 0));
+    const reviewsCount = m.reviewsCount !== undefined ? Number(m.reviewsCount) : (Array.isArray(m.reviews) ? m.reviews.length : 0);
+    const commentsCount = m.commentsCount !== undefined ? Number(m.commentsCount) : (Array.isArray(m.comments) ? m.comments.length : 0);
+
+    return {
+      ...m,
+      id: String(m.id),
+      posterUrl: poster,
+      poster: poster,
+      genre: genres,
+      genres: genres,
+      averageRating: rating,
+      rating: rating,
+      totalRatings: ratingsCount,
+      ratingsCount: ratingsCount,
+      reviewsCount: reviewsCount,
+      commentsCount: commentsCount,
+      reviews: Array.isArray(m.reviews) ? m.reviews : [],
+      comments: Array.isArray(m.comments) ? m.comments : [],
+      ratings: Array.isArray(m.ratings) ? m.ratings : []
+    };
   }
 
   // ============================================================================
@@ -397,17 +458,17 @@ class MovieApp {
         movie.title.toLowerCase().includes(query) ||
         (movie.director && movie.director.toLowerCase().includes(query)) ||
         (movie.synopsis && movie.synopsis.toLowerCase().includes(query)) ||
-        (Array.isArray(movie.genres) && movie.genres.some(g => g.toLowerCase().includes(query)));
+        (movie.genres && movie.genres.some(g => g.toLowerCase().includes(query)));
 
-      const matchGenre = !genre || (Array.isArray(movie.genres) && movie.genres.includes(genre));
+      const matchGenre = !genre || (movie.genres && movie.genres.some(g => g.toLowerCase() === genre.toLowerCase()));
 
       return matchQuery && matchGenre;
     });
 
     // Sorting
     filtered.sort((a, b) => {
-      const ratingA = Number(a.rating) || 0;
-      const ratingB = Number(b.rating) || 0;
+      const ratingA = Number(a.averageRating || a.rating) || 0;
+      const ratingB = Number(b.averageRating || b.rating) || 0;
       const yearA = Number(a.year) || 0;
       const yearB = Number(b.year) || 0;
       const titleA = (a.title || '').toLowerCase();
@@ -461,22 +522,29 @@ class MovieApp {
         const movieId = card.getAttribute('data-id');
         this.openModal(movieId);
       });
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          const movieId = card.getAttribute('data-id');
+          this.openModal(movieId);
+        }
+      });
     });
   }
 
   createMovieCardHTML(movie) {
-    const ratingDisplay = movie.rating !== undefined ? Number(movie.rating).toFixed(1) : 'N/A';
-    const genresList = Array.isArray(movie.genres) ? movie.genres : [];
-    const genrePills = genresList.slice(0, 3).map(g => `<span class="genre-pill">${this.escapeHTML(g)}</span>`).join('');
-    const reviewsCount = Array.isArray(movie.reviews) ? movie.reviews.length : 0;
-    const ratingsCount = movie.ratingsCount || (Array.isArray(movie.ratings) ? movie.ratings.length : 0);
+    const ratingValue = Number(movie.averageRating || movie.rating || 0);
+    const ratingDisplay = ratingValue > 0 ? ratingValue.toFixed(1) : 'New';
+    const genrePills = movie.genres.slice(0, 3).map(g => `<span class="genre-pill">${this.escapeHTML(g)}</span>`).join('');
+    const reviewsCount = movie.reviewsCount || (movie.reviews ? movie.reviews.length : 0);
+    const ratingsCount = movie.totalRatings || (movie.ratings ? movie.ratings.length : 0);
 
     return `
       <article class="movie-card" data-id="${movie.id}" tabindex="0" role="button" aria-label="View details for ${this.escapeHTML(movie.title)}">
         <div class="card-poster-wrapper">
           <img 
             class="card-poster" 
-            src="${this.escapeHTML(movie.poster || '')}" 
+            src="${this.escapeHTML(movie.posterUrl || movie.poster || '')}" 
             alt="${this.escapeHTML(movie.title)} poster"
             loading="lazy"
             onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'card-poster-fallback\\'><div class=\\'card-poster-fallback-icon\\'>🎬</div><strong>${this.escapeHTML(movie.title)}</strong></div>';"
@@ -485,7 +553,7 @@ class MovieApp {
             <span>⭐</span>
             <span>${ratingDisplay}</span>
           </div>
-          <div class="card-badge-year">${movie.year || 'Unknown'}</div>
+          <div class="card-badge-year">${movie.year || 'N/A'}</div>
         </div>
         <div class="card-body">
           <h2 class="card-title">${this.escapeHTML(movie.title)}</h2>
@@ -509,18 +577,18 @@ class MovieApp {
     this.selectedMovieId = movieId;
     let movie = this.movies.find(m => String(m.id) === String(movieId));
 
-    // Try fetching freshest detail from API if available
+    // Try fetching freshest detail from API
     if (this.apiAvailable) {
       try {
         const res = await fetch(`${this.apiBaseUrl}/movies/${movieId}`);
         if (res.ok) {
-          movie = await res.json();
-          // Update in local cache
+          const freshData = await res.json();
+          movie = this.normalizeMovie(freshData);
           const idx = this.movies.findIndex(m => String(m.id) === String(movieId));
           if (idx !== -1) this.movies[idx] = movie;
         }
       } catch (e) {
-        console.warn('Failed to fetch detailed movie from API, using cached data.', e);
+        console.warn('Could not fetch fresh movie detail from API:', e);
       }
     }
 
@@ -535,18 +603,17 @@ class MovieApp {
     this.modal.style.display = 'none';
     document.body.style.overflow = '';
     this.selectedMovieId = null;
-    this.selectedQuickRating = 0;
     this.selectedReviewRating = 5;
   }
 
   renderModalContent(movie) {
-    const ratingDisplay = movie.rating !== undefined ? Number(movie.rating).toFixed(1) : 'N/A';
-    const genresList = Array.isArray(movie.genres) ? movie.genres : [];
+    const ratingValue = Number(movie.averageRating || movie.rating || 0);
+    const ratingDisplay = ratingValue > 0 ? ratingValue.toFixed(1) : 'New';
     const reviews = Array.isArray(movie.reviews) ? movie.reviews : [];
     const comments = Array.isArray(movie.comments) ? movie.comments : [];
-    const ratingsCount = movie.ratingsCount || (Array.isArray(movie.ratings) ? movie.ratings.length : 0);
+    const ratingsCount = movie.totalRatings || (movie.ratings ? movie.ratings.length : 0);
 
-    const starsHtml = this.generateStarSymbols(Number(movie.rating) || 0);
+    const starsHtml = this.generateStarSymbols(ratingValue);
 
     this.modalBody.innerHTML = `
       <!-- Header Section -->
@@ -554,7 +621,7 @@ class MovieApp {
         <div class="detail-poster-wrapper">
           <img 
             class="detail-poster" 
-            src="${this.escapeHTML(movie.poster || '')}" 
+            src="${this.escapeHTML(movie.posterUrl || movie.poster || '')}" 
             alt="${this.escapeHTML(movie.title)}"
             onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'card-poster-fallback\\'><div class=\\'card-poster-fallback-icon\\'>🎬</div></div>';"
           />
@@ -563,11 +630,11 @@ class MovieApp {
           <h1 id="modal-movie-title" class="detail-title">${this.escapeHTML(movie.title)}</h1>
           <div class="detail-metadata">
             <span>📅 ${movie.year || 'N/A'}</span>
-            <span>⏱️ ${this.escapeHTML(movie.duration || 'N/A')}</span>
+            <span>⏱️ ${this.escapeHTML(movie.duration || 'Feature Film')}</span>
             <span>🎬 Dir. ${this.escapeHTML(movie.director || 'N/A')}</span>
           </div>
           <div class="detail-genres">
-            ${genresList.map(g => `<span class="genre-pill">${this.escapeHTML(g)}</span>`).join('')}
+            ${movie.genres.map(g => `<span class="genre-pill">${this.escapeHTML(g)}</span>`).join('')}
           </div>
           <div class="detail-synopsis-title">Synopsis</div>
           <p class="detail-synopsis">${this.escapeHTML(movie.synopsis || 'No synopsis available.')}</p>
@@ -580,17 +647,18 @@ class MovieApp {
           <div class="rating-number">${ratingDisplay}</div>
           <div class="rating-stars-and-count">
             <div class="stars-render">${starsHtml}</div>
-            <div class="rating-votes-count">Based on ${ratingsCount} community ratings</div>
+            <div class="rating-votes-count">Based on ${ratingsCount} community rating${ratingsCount === 1 ? '' : 's'}</div>
           </div>
         </div>
 
         <div class="rate-action-box">
-          <div class="rate-label">Rate this movie:</div>
+          <div class="rate-label">Rate this movie (1-5 stars):</div>
           <div class="star-rating-input" id="quick-star-rating">
             ${[1, 2, 3, 4, 5].map(star => `
-              <button class="star-btn" data-value="${star}" title="${star} stars" type="button">★</button>
+              <button class="star-btn" data-value="${star}" title="Rate ${star} star${star === 1 ? '' : 's'}" type="button">★</button>
             `).join('')}
           </div>
+          <div id="quick-rating-status" style="font-size: 0.75rem; color: var(--accent-success); min-height: 1rem; margin-top: 0.2rem;"></div>
         </div>
       </div>
 
@@ -613,19 +681,31 @@ class MovieApp {
             <div class="form-row">
               <div class="form-group">
                 <label for="review-author">Your Name / Handle *</label>
-                <input type="text" id="review-author" class="form-control" placeholder="e.g. CinemaLover" required />
+                <input 
+                  type="text" 
+                  id="review-author" 
+                  class="form-control" 
+                  placeholder="e.g. CinemaLover" 
+                  value="${this.escapeHTML(this.userPreferredName)}" 
+                  required 
+                />
               </div>
               <div class="form-group">
                 <label>Your Rating *</label>
                 <div class="star-rating-input" id="form-star-rating">
                   ${[1, 2, 3, 4, 5].map(star => `
-                    <button class="star-btn ${star <= 5 ? 'active' : ''}" data-value="${star}" type="button">★</button>
+                    <button class="star-btn ${star <= 5 ? 'active' : ''}" data-value="${star}" type="button" title="${star} stars">★</button>
                   `).join('')}
                 </div>
               </div>
               <div class="form-group">
                 <label for="review-text">Review Content *</label>
-                <textarea id="review-text" class="form-control" placeholder="Share your honest critique or feelings about the film..." required></textarea>
+                <textarea 
+                  id="review-text" 
+                  class="form-control" 
+                  placeholder="Share your honest critique or feelings about the film..." 
+                  required
+                ></textarea>
               </div>
               <div class="form-actions">
                 <span></span>
@@ -650,11 +730,23 @@ class MovieApp {
             <div class="form-row">
               <div class="form-group">
                 <label for="comment-author">Your Name / Handle *</label>
-                <input type="text" id="comment-author" class="form-control" placeholder="e.g. MovieBuff" required />
+                <input 
+                  type="text" 
+                  id="comment-author" 
+                  class="form-control" 
+                  placeholder="e.g. MovieBuff" 
+                  value="${this.escapeHTML(this.userPreferredName)}" 
+                  required 
+                />
               </div>
               <div class="form-group">
                 <label for="comment-text">Comment *</label>
-                <textarea id="comment-text" class="form-control" placeholder="Ask a question, point out an easter egg, or share a thought..." required></textarea>
+                <textarea 
+                  id="comment-text" 
+                  class="form-control" 
+                  placeholder="Ask a question, point out an easter egg, or share a thought..." 
+                  required
+                ></textarea>
               </div>
               <div class="form-actions">
                 <span></span>
@@ -680,10 +772,13 @@ class MovieApp {
     }
 
     return reviews.map(rev => {
-      const stars = '★'.repeat(Math.max(1, Math.min(5, rev.rating || 5))) + '☆'.repeat(5 - Math.max(1, Math.min(5, rev.rating || 5)));
-      const authorInitial = (rev.author || rev.user || 'A').charAt(0).toUpperCase();
-      const authorName = rev.author || rev.user || 'Anonymous';
-      const dateStr = rev.date ? new Date(rev.date).toLocaleDateString() : 'Just now';
+      const starRating = Math.max(1, Math.min(5, Number(rev.rating) || 5));
+      const stars = '★'.repeat(starRating) + '☆'.repeat(5 - starRating);
+      const authorName = rev.author || rev.user || rev.userName || 'Anonymous';
+      const authorInitial = authorName.charAt(0).toUpperCase();
+      const content = rev.content || rev.text || rev.review || '';
+      const dateRaw = rev.createdAt || rev.date;
+      const dateStr = dateRaw ? new Date(dateRaw).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Recent';
 
       return `
         <div class="feed-item">
@@ -693,11 +788,11 @@ class MovieApp {
               <span>${this.escapeHTML(authorName)}</span>
             </div>
             <div style="display:flex; align-items:center; gap: 0.75rem;">
-              <span style="color: var(--accent-gold); font-size: 0.9rem;">${stars}</span>
+              <span style="color: var(--accent-gold); font-size: 0.95rem;">${stars}</span>
               <span class="feed-date">${dateStr}</span>
             </div>
           </div>
-          <p class="feed-text">${this.escapeHTML(rev.text || rev.comment || '')}</p>
+          <p class="feed-text">${this.escapeHTML(content)}</p>
         </div>
       `;
     }).join('');
@@ -709,9 +804,11 @@ class MovieApp {
     }
 
     return comments.map(com => {
-      const authorInitial = (com.author || com.user || 'A').charAt(0).toUpperCase();
-      const authorName = com.author || com.user || 'Anonymous';
-      const dateStr = com.date ? new Date(com.date).toLocaleDateString() : 'Just now';
+      const authorName = com.author || com.user || com.userName || 'Anonymous';
+      const authorInitial = authorName.charAt(0).toUpperCase();
+      const content = com.content || com.text || com.comment || '';
+      const dateRaw = com.createdAt || com.date;
+      const dateStr = dateRaw ? new Date(dateRaw).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Recent';
 
       return `
         <div class="feed-item">
@@ -722,7 +819,7 @@ class MovieApp {
             </div>
             <span class="feed-date">${dateStr}</span>
           </div>
-          <p class="feed-text">${this.escapeHTML(com.text || com.comment || '')}</p>
+          <p class="feed-text">${this.escapeHTML(content)}</p>
         </div>
       `;
     }).join('');
@@ -748,8 +845,10 @@ class MovieApp {
       });
     });
 
-    // Quick Rating stars
+    // Quick Rating interactive stars widget (AC 1)
     const quickStarContainer = this.modalBody.querySelector('#quick-star-rating');
+    const quickStatus = this.modalBody.querySelector('#quick-rating-status');
+
     if (quickStarContainer) {
       const stars = quickStarContainer.querySelectorAll('.star-btn');
       stars.forEach(starBtn => {
@@ -764,14 +863,15 @@ class MovieApp {
 
         starBtn.addEventListener('click', async () => {
           const val = Number(starBtn.getAttribute('data-value'));
-          this.selectedQuickRating = val;
           stars.forEach(s => s.classList.toggle('active', Number(s.getAttribute('data-value')) <= val));
+          if (quickStatus) quickStatus.textContent = 'Submitting rating...';
           await this.submitRating(movie.id, val);
+          if (quickStatus) quickStatus.textContent = `You rated this film ${val} ★`;
         });
       });
     }
 
-    // Form Rating stars in Review Form
+    // Form Rating stars in Review Form (AC 1 & AC 2)
     const formStarContainer = this.modalBody.querySelector('#form-star-rating');
     if (formStarContainer) {
       const formStars = formStarContainer.querySelectorAll('.star-btn');
@@ -794,29 +894,48 @@ class MovieApp {
       });
     }
 
-    // Review form submission
+    // Review form submission with input validation (AC 2 & AC 3)
     const reviewForm = this.modalBody.querySelector('#review-form');
     if (reviewForm) {
       reviewForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const author = this.modalBody.querySelector('#review-author').value.trim();
-        const text = this.modalBody.querySelector('#review-text').value.trim();
+        const authorInput = this.modalBody.querySelector('#review-author');
+        const textInput = this.modalBody.querySelector('#review-text');
+        const author = authorInput.value.trim();
+        const content = textInput.value.trim();
         const rating = this.selectedReviewRating || 5;
 
-        if (!author || !text) {
-          this.showToast('Please fill in both name and review content.', 'error');
+        // Input Validation
+        if (!author) {
+          this.showToast('Please enter your name or handle.', 'error');
+          authorInput.focus();
           return;
         }
+        if (!content) {
+          this.showToast('Please enter your review content.', 'error');
+          textInput.focus();
+          return;
+        }
+        if (content.length < 3) {
+          this.showToast('Review must be at least 3 characters long.', 'error');
+          textInput.focus();
+          return;
+        }
+
+        // Remember author name
+        this.userPreferredName = author;
+        try { localStorage.setItem('cinescope_username', author); } catch (e) {}
 
         const submitBtn = this.modalBody.querySelector('#btn-submit-review');
         submitBtn.disabled = true;
         submitBtn.textContent = 'Submitting...';
 
-        await this.submitReview(movie.id, { author, text, rating });
+        await this.submitReview(movie.id, { author, content, rating });
 
         submitBtn.disabled = false;
         submitBtn.textContent = 'Submit Review';
-        reviewForm.reset();
+        textInput.value = '';
+
         // Reset stars to 5
         this.selectedReviewRating = 5;
         if (formStarContainer) {
@@ -825,28 +944,41 @@ class MovieApp {
       });
     }
 
-    // Comment form submission
+    // Comment form submission with input validation (AC 2 & AC 3)
     const commentForm = this.modalBody.querySelector('#comment-form');
     if (commentForm) {
       commentForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const author = this.modalBody.querySelector('#comment-author').value.trim();
-        const text = this.modalBody.querySelector('#comment-text').value.trim();
+        const authorInput = this.modalBody.querySelector('#comment-author');
+        const textInput = this.modalBody.querySelector('#comment-text');
+        const author = authorInput.value.trim();
+        const content = textInput.value.trim();
 
-        if (!author || !text) {
-          this.showToast('Please fill in both name and comment.', 'error');
+        // Input Validation
+        if (!author) {
+          this.showToast('Please enter your name or handle.', 'error');
+          authorInput.focus();
           return;
         }
+        if (!content) {
+          this.showToast('Please enter your comment.', 'error');
+          textInput.focus();
+          return;
+        }
+
+        // Remember author name
+        this.userPreferredName = author;
+        try { localStorage.setItem('cinescope_username', author); } catch (e) {}
 
         const submitBtn = this.modalBody.querySelector('#btn-submit-comment');
         submitBtn.disabled = true;
         submitBtn.textContent = 'Posting...';
 
-        await this.submitComment(movie.id, { author, text });
+        await this.submitComment(movie.id, { author, content });
 
         submitBtn.disabled = false;
         submitBtn.textContent = 'Post Comment';
-        commentForm.reset();
+        textInput.value = '';
       });
     }
   }
@@ -855,155 +987,187 @@ class MovieApp {
   // Submission Handlers (Rating, Review, Comment)
   // ============================================================================
   async submitRating(movieId, ratingVal) {
-    let success = false;
+    const movie = this.movies.find(m => String(m.id) === String(movieId));
+    const userId = this.userPreferredName || 'user_' + Math.random().toString(36).substring(7);
+
+    let apiSucceeded = false;
+    let newAverage = null;
+    let newTotal = null;
+
     if (this.apiAvailable) {
       try {
         const res = await fetch(`${this.apiBaseUrl}/movies/${movieId}/ratings`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rating: ratingVal, user: 'User' })
+          body: JSON.stringify({ rating: ratingVal, userId: userId, user: userId })
         });
         if (res.ok) {
-          success = true;
+          const json = await res.json();
+          if (json.averageRating !== undefined) newAverage = json.averageRating;
+          if (json.totalRatings !== undefined) newTotal = json.totalRatings;
+          apiSucceeded = true;
         }
       } catch (err) {
-        console.warn('API rating submission failed, falling back to local update.', err);
+        console.warn('API rating request failed, falling back to local update.', err);
       }
     }
 
-    // Update locally
-    const movie = this.movies.find(m => String(m.id) === String(movieId));
     if (movie) {
-      if (!Array.isArray(movie.ratings)) movie.ratings = [];
-      movie.ratings.push(ratingVal);
-      movie.ratingsCount = (movie.ratingsCount || 0) + 1;
+      if (apiSucceeded && newAverage !== null) {
+        movie.averageRating = Number(newAverage);
+        movie.rating = Number(newAverage);
+        movie.totalRatings = Number(newTotal);
+        movie.ratingsCount = Number(newTotal);
+      } else {
+        // Fallback local calculation
+        if (!Array.isArray(movie.ratings)) movie.ratings = [];
+        movie.ratings.push(ratingVal);
+        movie.totalRatings = (movie.totalRatings || 0) + 1;
+        movie.ratingsCount = movie.totalRatings;
+        const sum = movie.ratings.reduce((acc, r) => acc + (typeof r === 'object' ? r.rating : Number(r)), 0);
+        movie.averageRating = parseFloat((sum / movie.ratings.length).toFixed(1));
+        movie.rating = movie.averageRating;
+      }
 
-      // Recalculate average
-      const sum = movie.ratings.reduce((acc, r) => acc + Number(r), 0);
-      movie.rating = parseFloat((sum / movie.ratings.length).toFixed(1));
-
-      // Refresh aggregate rating UI in modal
-      const scoreNum = this.modalBody.querySelector('.rating-number');
-      const starsRender = this.modalBody.querySelector('.stars-render');
-      const votesCount = this.modalBody.querySelector('.rating-votes-count');
-
-      if (scoreNum) scoreNum.textContent = movie.rating.toFixed(1);
-      if (starsRender) starsRender.innerHTML = this.generateStarSymbols(movie.rating);
-      if (votesCount) votesCount.textContent = `Based on ${movie.ratingsCount} community ratings`;
-
-      this.render(); // update background card
-      this.showToast(`Thank you! Rated ${ratingVal} ★`, 'success');
+      this.updateRatingDisplayInModal(movie);
+      this.render(); // Update background catalog card
+      this.showToast(`Rating of ${ratingVal} ★ submitted!`, 'success');
     }
   }
 
-  async submitReview(movieId, { author, text, rating }) {
-    const newReview = {
-      id: `rev-${Date.now()}`,
-      author: author,
-      user: author,
-      text: text,
-      comment: text,
-      rating: rating,
-      date: new Date().toISOString()
-    };
+  async submitReview(movieId, { author, content, rating }) {
+    const movie = this.movies.find(m => String(m.id) === String(movieId));
+    let createdReview = null;
+    let apiSucceeded = false;
 
     if (this.apiAvailable) {
       try {
         const res = await fetch(`${this.apiBaseUrl}/movies/${movieId}/reviews`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newReview)
+          body: JSON.stringify({ author, content, text: content, rating })
         });
         if (res.ok) {
-          const created = await res.json();
-          if (created && created.id) {
-            newReview.id = created.id;
+          const json = await res.json();
+          createdReview = json.review;
+          if (json.averageRating !== undefined && movie) {
+            movie.averageRating = Number(json.averageRating);
+            movie.rating = Number(json.averageRating);
           }
+          if (json.totalRatings !== undefined && movie) {
+            movie.totalRatings = Number(json.totalRatings);
+            movie.ratingsCount = Number(json.totalRatings);
+          }
+          apiSucceeded = true;
         }
       } catch (err) {
-        console.warn('API review submission failed, falling back to local update.', err);
+        console.warn('API review request failed, falling back to local creation.', err);
       }
     }
 
-    // Local update
-    const movie = this.movies.find(m => String(m.id) === String(movieId));
+    if (!createdReview) {
+      createdReview = {
+        id: 'rev_' + Date.now(),
+        movieId: String(movieId),
+        author: author,
+        content: content,
+        text: content,
+        rating: rating,
+        createdAt: new Date().toISOString()
+      };
+      if (movie) {
+        if (!Array.isArray(movie.ratings)) movie.ratings = [];
+        movie.ratings.push(rating);
+        movie.totalRatings = (movie.totalRatings || 0) + 1;
+        movie.ratingsCount = movie.totalRatings;
+        const sum = movie.ratings.reduce((acc, r) => acc + (typeof r === 'object' ? r.rating : Number(r)), 0);
+        movie.averageRating = parseFloat((sum / movie.ratings.length).toFixed(1));
+        movie.rating = movie.averageRating;
+      }
+    }
+
     if (movie) {
       if (!Array.isArray(movie.reviews)) movie.reviews = [];
-      movie.reviews.unshift(newReview);
+      movie.reviews.unshift(createdReview);
+      movie.reviewsCount = movie.reviews.length;
 
-      // Also record rating if not already done
-      if (!Array.isArray(movie.ratings)) movie.ratings = [];
-      movie.ratings.push(rating);
-      movie.ratingsCount = (movie.ratingsCount || 0) + 1;
-      const sum = movie.ratings.reduce((acc, r) => acc + Number(r), 0);
-      movie.rating = parseFloat((sum / movie.ratings.length).toFixed(1));
-
-      // Update reviews list DOM
+      // Immediately append/prepend to reviews list (AC 3)
       const reviewsList = this.modalBody.querySelector('#reviews-list');
       if (reviewsList) {
         reviewsList.innerHTML = this.renderReviewsList(movie.reviews);
       }
 
-      // Update tab counter
+      // Update reviews tab button counter
       const tabBtn = this.modalBody.querySelector('#tab-btn-reviews');
       if (tabBtn) tabBtn.textContent = `Reviews (${movie.reviews.length})`;
 
-      // Refresh score UI
-      const scoreNum = this.modalBody.querySelector('.rating-number');
-      const starsRender = this.modalBody.querySelector('.stars-render');
-      const votesCount = this.modalBody.querySelector('.rating-votes-count');
-      if (scoreNum) scoreNum.textContent = movie.rating.toFixed(1);
-      if (starsRender) starsRender.innerHTML = this.generateStarSymbols(movie.rating);
-      if (votesCount) votesCount.textContent = `Based on ${movie.ratingsCount} community ratings`;
-
-      this.render();
+      this.updateRatingDisplayInModal(movie);
+      this.render(); // update background catalog card
       this.showToast('Your review has been published!', 'success');
     }
   }
 
-  async submitComment(movieId, { author, text }) {
-    const newComment = {
-      id: `com-${Date.now()}`,
-      author: author,
-      user: author,
-      text: text,
-      comment: text,
-      date: new Date().toISOString()
-    };
+  async submitComment(movieId, { author, content }) {
+    const movie = this.movies.find(m => String(m.id) === String(movieId));
+    let createdComment = null;
 
     if (this.apiAvailable) {
       try {
         const res = await fetch(`${this.apiBaseUrl}/movies/${movieId}/comments`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newComment)
+          body: JSON.stringify({ author, content, text: content })
         });
         if (res.ok) {
-          const created = await res.json();
-          if (created && created.id) {
-            newComment.id = created.id;
-          }
+          const json = await res.json();
+          createdComment = json.comment;
         }
       } catch (err) {
-        console.warn('API comment submission failed, falling back to local update.', err);
+        console.warn('API comment request failed, falling back to local creation.', err);
       }
     }
 
-    // Local update
-    const movie = this.movies.find(m => String(m.id) === String(movieId));
+    if (!createdComment) {
+      createdComment = {
+        id: 'c_' + Date.now(),
+        movieId: String(movieId),
+        author: author,
+        content: content,
+        text: content,
+        createdAt: new Date().toISOString()
+      };
+    }
+
     if (movie) {
       if (!Array.isArray(movie.comments)) movie.comments = [];
-      movie.comments.unshift(newComment);
+      movie.comments.unshift(createdComment);
+      movie.commentsCount = movie.comments.length;
 
+      // Immediately append/prepend to comments list (AC 3)
       const commentsList = this.modalBody.querySelector('#comments-list');
       if (commentsList) {
         commentsList.innerHTML = this.renderCommentsList(movie.comments);
       }
 
+      // Update comments tab button counter
       const tabBtn = this.modalBody.querySelector('#tab-btn-comments');
       if (tabBtn) tabBtn.textContent = `Comments (${movie.comments.length})`;
 
       this.showToast('Comment posted successfully!', 'success');
+    }
+  }
+
+  updateRatingDisplayInModal(movie) {
+    const ratingValue = Number(movie.averageRating || movie.rating || 0);
+    const scoreNum = this.modalBody.querySelector('.rating-number');
+    const starsRender = this.modalBody.querySelector('.stars-render');
+    const votesCount = this.modalBody.querySelector('.rating-votes-count');
+
+    if (scoreNum) scoreNum.textContent = ratingValue > 0 ? ratingValue.toFixed(1) : 'New';
+    if (starsRender) starsRender.innerHTML = this.generateStarSymbols(ratingValue);
+    if (votesCount) {
+      const count = movie.totalRatings || (movie.ratings ? movie.ratings.length : 0);
+      votesCount.textContent = `Based on ${count} community rating${count === 1 ? '' : 's'}`;
     }
   }
 
