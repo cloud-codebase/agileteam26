@@ -33,6 +33,7 @@ function getStatusDisplay() {
   return document.getElementById('status') ||
          document.querySelector('.status-display') ||
          document.querySelector('.status-message') ||
+         document.querySelector('.status') ||
          statusDisplay;
 }
 
@@ -85,7 +86,7 @@ function updateStatus(message, statusClass = '') {
   const display = getStatusDisplay();
   if (!display) return;
   display.textContent = message;
-  display.className = 'status-display';
+  display.className = 'status-display status';
   if (statusClass) {
     display.classList.add(statusClass);
   }
@@ -111,6 +112,7 @@ function handleCellPlayed(clickedCell, cellIndex) {
   if (clickedCell) {
     clickedCell.textContent = currentPlayer;
     clickedCell.classList.add(currentPlayer.toLowerCase());
+    clickedCell.classList.add(`player-${currentPlayer.toLowerCase()}`);
     clickedCell.setAttribute('aria-label', `Cell ${cellIndex + 1}, Player ${currentPlayer}`);
     clickedCell.disabled = true;
   }
@@ -245,6 +247,8 @@ if (typeof module !== 'undefined' && module.exports) {
     isGameActive: () => isGameActive,
     get gameActive() { return gameActive; },
     set gameActive(val) { gameActive = val; isGameActive = val; },
+    get isGameActive() { return isGameActive; },
+    set isGameActive(val) { isGameActive = val; gameActive = val; },
     get currentPlayer() { return currentPlayer; },
     set currentPlayer(val) { currentPlayer = val; },
     checkWin,
@@ -258,6 +262,10 @@ if (typeof module !== 'undefined' && module.exports) {
     handleResultValidation,
     highlightWinningCells,
     initGame,
-    updateStatus
+    updateStatus,
+    currentPlayerTurnMessage,
+    playerWonMessage,
+    winningMessage,
+    drawMessage
   };
 }
