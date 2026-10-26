@@ -1,0 +1,23 @@
+{
+  "name": "movie-review-app",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Movie database and review platform with in-memory DB and interactive UI",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test test/**/*.test.js"
+  },
+  "keywords": [
+    "movie",
+    "reviews",
+    "in-memory-db",
+    "rest-api"
+  ],
+  "author": "Agile Team",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
