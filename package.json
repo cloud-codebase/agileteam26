@@ -2,7 +2,7 @@
   "name": "movie-review-app",
   "version": "1.0.0",
   "type": "module",
-  "description": "Movie database and review platform with in-memory DB and interactive UI",
+  "description": "Client-server movie database and review platform with in-memory DB and interactive UI",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
@@ -19,5 +19,8 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
