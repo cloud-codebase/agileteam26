@@ -30,7 +30,10 @@ const resetButton = typeof document !== 'undefined' ? (document.getElementById('
 // Helper DOM selectors (dynamically resolved so tests can mock or run after DOM mutations)
 function getStatusDisplay() {
   if (typeof document === 'undefined') return null;
-  return document.getElementById('status') || document.querySelector('.status-display') || document.querySelector('.status-message') || statusDisplay;
+  return document.getElementById('status') ||
+         document.querySelector('.status-display') ||
+         document.querySelector('.status-message') ||
+         statusDisplay;
 }
 
 function getCells() {
@@ -41,7 +44,14 @@ function getCells() {
 
 function getResetButton() {
   if (typeof document === 'undefined') return null;
-  return document.getElementById('reset-button') || document.querySelector('.reset-button') || document.querySelector('.btn-reset') || resetButton;
+  return document.getElementById('reset-button') ||
+         document.getElementById('reset-btn') ||
+         document.getElementById('restart-btn') ||
+         document.getElementById('restart') ||
+         document.querySelector('.reset-button') ||
+         document.querySelector('.btn-reset') ||
+         document.querySelector('.restart-btn') ||
+         resetButton;
 }
 
 // Status messages
