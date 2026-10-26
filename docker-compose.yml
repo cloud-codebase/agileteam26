@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  movie-review-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: movie-review-app
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
