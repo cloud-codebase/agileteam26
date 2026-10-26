@@ -18,9 +18,9 @@ let currentPlayer = 'X';
 let isGameActive = true;
 
 // DOM Elements
-const statusDisplay = document.getElementById('status');
-const cells = document.querySelectorAll('.cell');
-const resetButton = document.getElementById('reset-button');
+const statusDisplay = typeof document !== 'undefined' ? document.getElementById('status') : null;
+const cells = typeof document !== 'undefined' ? document.querySelectorAll('.cell') : [];
+const resetButton = typeof document !== 'undefined' ? document.getElementById('reset-button') : null;
 
 // Status messages
 const currentPlayerTurnMessage = () => `Player ${currentPlayer}'s turn`;
@@ -59,7 +59,9 @@ function updateStatus(message, statusClass = '') {
 
 // Handle cell click for turn-based moves
 function handleCellClick(event) {
-  const clickedCell = event.target;
+  const clickedCell = event.target ? event.target.closest('.cell') : null;
+  if (!clickedCell) return;
+
   const rawIndex = clickedCell.getAttribute('data-index') || clickedCell.getAttribute('data-cell-index');
   const cellIndex = parseInt(rawIndex, 10);
 
@@ -73,6 +75,7 @@ function handleCellClick(event) {
   clickedCell.textContent = currentPlayer;
   clickedCell.classList.add(currentPlayer.toLowerCase());
   clickedCell.setAttribute('aria-label', `Cell ${cellIndex + 1}, Player ${currentPlayer}`);
+  clickedCell.disabled = true;
 
   // Check for win condition
   const winResult = checkWin();
@@ -90,9 +93,7 @@ function handleCellClick(event) {
 
     // Disable remaining empty cells
     cells.forEach(cell => {
-      if (!cell.textContent) {
-        cell.disabled = true;
-      }
+      cell.disabled = true;
     });
     return;
   }
@@ -139,10 +140,12 @@ function initGame() {
 }
 
 // Run initialization once DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initGame);
-} else {
-  initGame();
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGame);
+  } else {
+    initGame();
+  }
 }
 
 // Export for testing in Node / CommonJS environments if applicable
@@ -150,9 +153,14 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     WINNING_COMBINATIONS,
     boardState,
+    getBoardState: () => boardState,
+    getCurrentPlayer: () => currentPlayer,
+    isGameActive: () => isGameActive,
     checkWin,
     checkDraw,
     resetGame,
-    handleCellClick
+    handleCellClick,
+    initGame,
+    updateStatus
   };
 }
