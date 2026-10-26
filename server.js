@@ -1,4 +1,7 @@
-const server = require('./src/server');
+/**
+ * Entry point for Movie Review Platform server.
+ */
+import { server } from './server/index.js';
 
 const PORT = process.env.PORT || 3000;
 
@@ -8,4 +11,4 @@ if (!server.listening) {
   });
 }
 
-module.exports = server;
+export default server;
