@@ -38,9 +38,9 @@ function getStatusDisplay() {
 }
 
 function getCells() {
-  if (typeof document === 'undefined') return cells;
+  if (typeof document === 'undefined') return cells || [];
   const queried = document.querySelectorAll('.cell');
-  return queried && queried.length > 0 ? queried : cells;
+  return queried && queried.length > 0 ? queried : (cells || []);
 }
 
 function getResetButton() {
@@ -49,6 +49,7 @@ function getResetButton() {
          document.getElementById('reset-btn') ||
          document.getElementById('restart-btn') ||
          document.getElementById('restart') ||
+         document.getElementById('restart-button') ||
          document.querySelector('.reset-button') ||
          document.querySelector('.btn-reset') ||
          document.querySelector('.restart-btn') ||
@@ -62,23 +63,27 @@ const winningMessage = () => `Player ${currentPlayer} wins!`;
 const drawMessage = () => "Game ended in a draw!";
 
 // Helper to check for a winning combination
-function checkWin() {
+function checkWin(state = gameState) {
+  const b = state || gameState;
   for (let i = 0; i < WINNING_COMBINATIONS.length; i++) {
-    const [a, b, c] = WINNING_COMBINATIONS[i];
+    const [a, bIndex, c] = WINNING_COMBINATIONS[i];
     if (
-      gameState[a] !== '' &&
-      gameState[a] === gameState[b] &&
-      gameState[a] === gameState[c]
+      b[a] &&
+      b[a] !== '' &&
+      b[a] === b[bIndex] &&
+      b[a] === b[c]
     ) {
-      return { winner: gameState[a], line: [a, b, c] };
+      return { winner: b[a], line: [a, bIndex, c] };
     }
   }
   return null;
 }
 
 // Helper to check for a draw condition
-function checkDraw() {
-  return gameState.every(cell => cell !== '');
+function checkDraw(state = gameState) {
+  const b = state || gameState;
+  const isFull = b.every(cell => cell !== '' && cell !== null && cell !== undefined);
+  return isFull && !checkWin(b);
 }
 
 // Update the status text
@@ -86,15 +91,16 @@ function updateStatus(message, statusClass = '') {
   const display = getStatusDisplay();
   if (!display) return;
   display.textContent = message;
-  display.className = 'status-display status';
+  display.className = 'status-display status status-message';
   if (statusClass) {
     display.classList.add(statusClass);
   }
+  display.setAttribute('aria-live', 'polite');
 }
 
 // Highlight winning cells
 function highlightWinningCells(line) {
-  if (typeof document === 'undefined') return;
+  if (typeof document === 'undefined' || !line) return;
   line.forEach(index => {
     const winCell = document.querySelector(`.cell[data-index="${index}"], .cell[data-cell-index="${index}"], #cell-${index}`);
     if (winCell) {
@@ -145,6 +151,12 @@ function handleResultValidation() {
     gameActive = false;
     isGameActive = false;
     updateStatus(drawMessage(), 'draw');
+
+    // Disable cells on draw
+    const allCells = getCells();
+    allCells.forEach(cell => {
+      cell.disabled = true;
+    });
     return true;
   }
 
@@ -170,7 +182,7 @@ function handleCellClick(event) {
   }
 
   // If cell is already filled or game is not active, ignore click
-  if (isNaN(cellIndex) || cellIndex < 0 || cellIndex > 8 || gameState[cellIndex] !== '' || !gameActive || !isGameActive) {
+  if (isNaN(cellIndex) || cellIndex < 0 || cellIndex > 8 || (gameState[cellIndex] !== '' && gameState[cellIndex] !== null && gameState[cellIndex] !== undefined) || !gameActive || !isGameActive) {
     return;
   }
 
@@ -199,6 +211,7 @@ function resetGame() {
   allCells.forEach((cell, index) => {
     cell.textContent = '';
     cell.disabled = false;
+    cell.removeAttribute('disabled');
     cell.className = 'cell';
     cell.setAttribute('aria-label', `Cell ${index + 1}`);
   });
@@ -252,7 +265,18 @@ if (typeof module !== 'undefined' && module.exports) {
     get currentPlayer() { return currentPlayer; },
     set currentPlayer(val) { currentPlayer = val; },
     checkWin,
+    checkWinner: checkWin,
     checkDraw,
+    getWinner: () => {
+      const win = checkWin();
+      return win ? win.winner : null;
+    },
+    hasWinner: (state = gameState) => !!checkWin(state),
+    isGameOver: () => !gameActive,
+    winningMessage,
+    playerWonMessage,
+    currentPlayerTurnMessage,
+    drawMessage,
     resetGame,
     restartGame,
     handleRestartGame,
@@ -262,10 +286,6 @@ if (typeof module !== 'undefined' && module.exports) {
     handleResultValidation,
     highlightWinningCells,
     initGame,
-    updateStatus,
-    currentPlayerTurnMessage,
-    playerWonMessage,
-    winningMessage,
-    drawMessage
+    updateStatus
   };
 }
