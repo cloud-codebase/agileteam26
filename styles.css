@@ -114,7 +114,9 @@ main,
 }
 
 .cell.winning,
-.cell.winning-cell {
+.cell.winning-cell,
+.cell.winner,
+.cell.highlight {
   background-color: #c6f6d5;
   color: #22543d;
   animation: winner-highlight 0.5s ease-in-out;

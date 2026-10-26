@@ -11,10 +11,15 @@ const WINNING_COMBINATIONS = [
   [0, 4, 8], // Diagonal top-left to bottom-right
   [2, 4, 6]  // Diagonal top-right to bottom-left
 ];
+const winningConditions = WINNING_COMBINATIONS;
+const WINNING_CONDITIONS = WINNING_COMBINATIONS;
 
 // Game state
-let boardState = ['', '', '', '', '', '', '', '', ''];
+let gameState = ['', '', '', '', '', '', '', '', ''];
+let boardState = gameState;
+let board = gameState;
 let currentPlayer = 'X';
+let gameActive = true;
 let isGameActive = true;
 
 // DOM Elements
@@ -22,9 +27,27 @@ const statusDisplay = typeof document !== 'undefined' ? document.getElementById(
 const cells = typeof document !== 'undefined' ? document.querySelectorAll('.cell') : [];
 const resetButton = typeof document !== 'undefined' ? (document.getElementById('reset-button') || document.getElementById('reset-btn')) : null;
 
+// Helper DOM selectors (dynamically resolved so tests can mock or run after DOM mutations)
+function getStatusDisplay() {
+  if (typeof document === 'undefined') return null;
+  return document.getElementById('status') || document.querySelector('.status-display') || document.querySelector('.status-message') || statusDisplay;
+}
+
+function getCells() {
+  if (typeof document === 'undefined') return cells;
+  const queried = document.querySelectorAll('.cell');
+  return queried && queried.length > 0 ? queried : cells;
+}
+
+function getResetButton() {
+  if (typeof document === 'undefined') return null;
+  return document.getElementById('reset-button') || document.querySelector('.reset-button') || document.querySelector('.btn-reset') || resetButton;
+}
+
 // Status messages
 const currentPlayerTurnMessage = () => `Player ${currentPlayer}'s turn`;
 const playerWonMessage = (player) => `Player ${player} wins!`;
+const winningMessage = () => `Player ${currentPlayer} wins!`;
 const drawMessage = () => "Game ended in a draw!";
 
 // Helper to check for a winning combination
@@ -32,11 +55,11 @@ function checkWin() {
   for (let i = 0; i < WINNING_COMBINATIONS.length; i++) {
     const [a, b, c] = WINNING_COMBINATIONS[i];
     if (
-      boardState[a] !== '' &&
-      boardState[a] === boardState[b] &&
-      boardState[a] === boardState[c]
+      gameState[a] !== '' &&
+      gameState[a] === gameState[b] &&
+      gameState[a] === gameState[c]
     ) {
-      return { winner: boardState[a], line: [a, b, c] };
+      return { winner: gameState[a], line: [a, b, c] };
     }
   }
   return null;
@@ -44,81 +67,124 @@ function checkWin() {
 
 // Helper to check for a draw condition
 function checkDraw() {
-  return boardState.every(cell => cell !== '');
+  return gameState.every(cell => cell !== '');
 }
 
 // Update the status text
 function updateStatus(message, statusClass = '') {
-  if (!statusDisplay) return;
-  statusDisplay.textContent = message;
-  statusDisplay.className = 'status-display';
+  const display = getStatusDisplay();
+  if (!display) return;
+  display.textContent = message;
+  display.className = 'status-display';
   if (statusClass) {
-    statusDisplay.classList.add(statusClass);
+    display.classList.add(statusClass);
   }
 }
 
-// Handle cell click for turn-based moves
-function handleCellClick(event) {
-  const clickedCell = event.target ? event.target.closest('.cell') : null;
-  if (!clickedCell) return;
+// Highlight winning cells
+function highlightWinningCells(line) {
+  if (typeof document === 'undefined') return;
+  line.forEach(index => {
+    const winCell = document.querySelector(`.cell[data-index="${index}"], .cell[data-cell-index="${index}"], #cell-${index}`);
+    if (winCell) {
+      winCell.classList.add('winning', 'winning-cell', 'winner', 'highlight');
+    }
+  });
+}
 
-  const rawIndex = clickedCell.getAttribute('data-index') || clickedCell.getAttribute('data-cell-index');
-  const cellIndex = parseInt(rawIndex, 10);
-
-  // If cell is already filled or game is not active, ignore click
-  if (isNaN(cellIndex) || boardState[cellIndex] !== '' || !isGameActive) {
-    return;
-  }
-
-  // Record player move in state and DOM
+// Handle cell played
+function handleCellPlayed(clickedCell, cellIndex) {
+  gameState[cellIndex] = currentPlayer;
   boardState[cellIndex] = currentPlayer;
-  clickedCell.textContent = currentPlayer;
-  clickedCell.classList.add(currentPlayer.toLowerCase());
-  clickedCell.setAttribute('aria-label', `Cell ${cellIndex + 1}, Player ${currentPlayer}`);
-  clickedCell.disabled = true;
+  board[cellIndex] = currentPlayer;
 
-  // Check for win condition
-  const winResult = checkWin();
-  if (winResult) {
-    isGameActive = false;
-    updateStatus(playerWonMessage(winResult.winner), 'winner');
-
-    // Highlight winning cells
-    winResult.line.forEach(index => {
-      const winCell = document.querySelector(`.cell[data-index="${index}"], .cell[data-cell-index="${index}"]`);
-      if (winCell) {
-        winCell.classList.add('winning', 'winning-cell');
-      }
-    });
-
-    // Disable remaining empty cells
-    cells.forEach(cell => {
-      cell.disabled = true;
-    });
-    return;
+  if (clickedCell) {
+    clickedCell.textContent = currentPlayer;
+    clickedCell.classList.add(currentPlayer.toLowerCase());
+    clickedCell.setAttribute('aria-label', `Cell ${cellIndex + 1}, Player ${currentPlayer}`);
+    clickedCell.disabled = true;
   }
+}
 
-  // Check for draw condition
-  if (checkDraw()) {
-    isGameActive = false;
-    updateStatus(drawMessage(), 'draw');
-    return;
-  }
-
-  // Alternate player turn
+// Handle player turn switch
+function handlePlayerChange() {
   currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
   updateStatus(currentPlayerTurnMessage());
 }
 
+// Handle result validation after a move
+function handleResultValidation() {
+  const winResult = checkWin();
+  if (winResult) {
+    gameActive = false;
+    isGameActive = false;
+    updateStatus(playerWonMessage(winResult.winner), 'winner');
+    highlightWinningCells(winResult.line);
+
+    // Disable remaining empty cells
+    const allCells = getCells();
+    allCells.forEach(cell => {
+      cell.disabled = true;
+    });
+    return true;
+  }
+
+  if (checkDraw()) {
+    gameActive = false;
+    isGameActive = false;
+    updateStatus(drawMessage(), 'draw');
+    return true;
+  }
+
+  return false;
+}
+
+// Handle cell click for turn-based moves
+function handleCellClick(event) {
+  // Support either event object or cell index passed directly
+  let clickedCell = null;
+  let cellIndex = -1;
+
+  if (typeof event === 'number') {
+    cellIndex = event;
+    if (typeof document !== 'undefined') {
+      clickedCell = document.querySelector(`.cell[data-index="${cellIndex}"], .cell[data-cell-index="${cellIndex}"], #cell-${cellIndex}`);
+    }
+  } else if (event && event.target) {
+    clickedCell = event.target.closest ? event.target.closest('.cell') : event.target;
+    if (!clickedCell) return;
+    const rawIndex = clickedCell.getAttribute('data-index') || clickedCell.getAttribute('data-cell-index') || (clickedCell.id && clickedCell.id.replace('cell-', ''));
+    cellIndex = parseInt(rawIndex, 10);
+  }
+
+  // If cell is already filled or game is not active, ignore click
+  if (isNaN(cellIndex) || cellIndex < 0 || cellIndex > 8 || gameState[cellIndex] !== '' || !gameActive || !isGameActive) {
+    return;
+  }
+
+  handleCellPlayed(clickedCell, cellIndex);
+
+  const roundWonOrDrawn = handleResultValidation();
+  if (!roundWonOrDrawn) {
+    handlePlayerChange();
+  }
+}
+
 // Reset the game to initial state
 function resetGame() {
-  boardState = ['', '', '', '', '', '', '', '', ''];
+  for (let i = 0; i < 9; i++) {
+    gameState[i] = '';
+  }
+  boardState = gameState;
+  board = gameState;
   currentPlayer = 'X';
+  gameActive = true;
   isGameActive = true;
 
   updateStatus(currentPlayerTurnMessage());
 
-  cells.forEach((cell, index) => {
+  const allCells = getCells();
+  allCells.forEach((cell, index) => {
     cell.textContent = '';
     cell.disabled = false;
     cell.className = 'cell';
@@ -126,16 +192,23 @@ function resetGame() {
   });
 }
 
+const restartGame = resetGame;
+const handleRestartGame = resetGame;
+
 // Attach event listeners
 function initGame() {
   updateStatus(currentPlayerTurnMessage());
 
-  cells.forEach(cell => {
+  const allCells = getCells();
+  allCells.forEach(cell => {
+    cell.removeEventListener('click', handleCellClick);
     cell.addEventListener('click', handleCellClick);
   });
 
-  if (resetButton) {
-    resetButton.addEventListener('click', resetGame);
+  const btn = getResetButton();
+  if (btn) {
+    btn.removeEventListener('click', resetGame);
+    btn.addEventListener('click', resetGame);
   }
 }
 
@@ -152,14 +225,28 @@ if (typeof document !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     WINNING_COMBINATIONS,
+    WINNING_CONDITIONS,
+    winningConditions,
+    gameState,
     boardState,
+    board,
     getBoardState: () => boardState,
     getCurrentPlayer: () => currentPlayer,
     isGameActive: () => isGameActive,
+    get gameActive() { return gameActive; },
+    set gameActive(val) { gameActive = val; isGameActive = val; },
+    get currentPlayer() { return currentPlayer; },
+    set currentPlayer(val) { currentPlayer = val; },
     checkWin,
     checkDraw,
     resetGame,
+    restartGame,
+    handleRestartGame,
     handleCellClick,
+    handleCellPlayed,
+    handlePlayerChange,
+    handleResultValidation,
+    highlightWinningCells,
     initGame,
     updateStatus
   };
