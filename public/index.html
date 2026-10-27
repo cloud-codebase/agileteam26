@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MovieHub - Ratings & Reviews</title>
+  <link rel="stylesheet" href="css/catalog.css">
+  <link rel="stylesheet" href="css/reviews.css">
+</head>
+<body>
+  <!-- Header & Toolbar -->
+  <header class="app-header">
+    <div class="header-container">
+      <h1 class="logo">🎬 MovieHub</h1>
+      <div class="search-filter-bar">
+        <div class="search-wrapper">
+          <input type="text" id="search-input" placeholder="Search title, director, or cast..." autocomplete="off">
+          <button type="button" id="search-clear-btn" title="Clear search">✕</button>
+        </div>
+        <div class="filter-wrapper">
+          <select id="genre-filter">
+            <option value="all">All Genres</option>
+            <option value="Action">Action</option>
+            <option value="Sci-Fi">Sci-Fi</option>
+            <option value="Drama">Drama</option>
+            <option value="Crime">Crime</option>
+            <option value="Comedy">Comedy</option>
+            <option value="Animation">Animation</option>
+            <option value="Thriller">Thriller</option>
+          </select>
+          <select id="sort-by">
+            <option value="rating-desc">Highest Rated ★</option>
+            <option value="year-desc">Recently Released</option>
+            <option value="title-asc">Alphabetical (A-Z)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div id="loading-spinner" class="spinner hidden"></div>
+    <div id="no-results-msg" class="empty-state hidden">No movies match your search or filter criteria.</div>
+    <div id="movie-grid" class="movie-grid"></div>
+  </main>
+
+  <!-- Movie Details Modal -->
+  <div id="movie-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="modal-backdrop"></div>
+    <div class="modal-dialog">
+      <button type="button" id="modal-close-btn" class="modal-close-btn" aria-label="Close">✕</button>
+      
+      <!-- Movie Summary Header -->
+      <div id="modal-movie-header" class="modal-movie-header">
+        <img id="modal-poster" src="" alt="Movie Poster" class="modal-poster">
+        <div class="modal-header-info">
+          <h2 id="modal-title"></h2>
+          <div class="modal-meta">
+            <span id="modal-year"></span> • <span id="modal-director"></span> • <span id="modal-genres" class="badge-list"></span>
+          </div>
+          <p id="modal-synopsis"></p>
+          <p class="modal-cast"><strong>Cast:</strong> <span id="modal-cast-names"></span></p>
+        </div>
+      </div>
+
+      <!-- Rating Analytics Breakdown -->
+      <section id="rating-analytics" class="rating-analytics">
+        <h3>Rating Breakdown</h3>
+        <div class="analytics-summary">
+          <div class="overall-rating">
+            <span id="analytics-avg-rating" class="avg-score">0.0</span>
+            <div class="star-display">★★★★★</div>
+            <span id="analytics-total-votes" class="total-count">0 ratings</span>
+          </div>
+          <div id="rating-bars-container" class="rating-bars-container">
+            <!-- 5 to 1 Star rows injected dynamically -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Reviews Section -->
+      <section id="reviews-section" class="reviews-section">
+        <h3>Reviews & Community Feedback</h3>
+        
+        <!-- Add Review Form -->
+        <form id="add-review-form" class="review-form">
+          <h4>Leave a Review</h4>
+          <div class="form-row">
+            <input type="text" id="review-author-input" placeholder="Your Name" required maxlength="50">
+            <select id="review-rating-input" required>
+              <option value="5">5 ★ - Outstanding</option>
+              <option value="4">4 ★ - Great</option>
+              <option value="3">3 ★ - Good</option>
+              <option value="2">2 ★ - Fair</option>
+              <option value="1">1 ★ - Poor</option>
+            </select>
+          </div>
+          <textarea id="review-comment-input" placeholder="Share your thoughts about this movie..." required maxlength="500"></textarea>
+          <button type="submit" id="review-submit-btn" class="btn-submit">Post Review</button>
+        </form>
+
+        <!-- Dynamic Reviews List -->
+        <div id="reviews-list" class="reviews-list"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Modular Scripts -->
+  <script src="js/toast.js"></script>
+  <script src="js/catalog.js"></script>
+  <script src="js/reviews.js"></script>
+</body>
+</html>
