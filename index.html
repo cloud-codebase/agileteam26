@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Retro Snake 20 - Arcade Edition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="arcade-cabinet">
+    <!-- Header / Marquee -->
+    <header class="cabinet-marquee neon-glow">
+      <h1 class="game-title">SNAKE 2.0</h1>
+      <p class="subtitle">RETRO ARCADE EDITION</p>
+    </header>
+
+    <!-- Heads-Up Display (HUD) -->
+    <section class="hud" aria-label="Game Scores">
+      <div class="score-card">
+        <span class="score-label">SCORE</span>
+        <span id="score-display" class="score-value">0</span>
+      </div>
+      <div class="score-card">
+        <span class="score-label">HIGH SCORE</span>
+        <span id="high-score-display" class="score-value">0</span>
+      </div>
+    </section>
+
+    <!-- Arcade Action Controls -->
+    <section class="action-bar" aria-label="Game Controls">
+      <button id="start-btn" class="arcade-btn neon-btn" type="button">START</button>
+      <button id="reset-btn" class="arcade-btn" type="button">RESET</button>
+    </section>
+
+    <!-- CRT Game Screen & Canvas -->
+    <main class="cabinet-display">
+      <div id="canvas-container" class="crt-screen">
+        <canvas id="game-canvas" width="400" height="400" role="img" aria-label="Snake Game Board"></canvas>
+      </div>
+
+      <!-- Game Over Modal Overlay -->
+      <div id="game-over-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-content neon-glow">
+          <h2 id="modal-title" class="game-over-title">GAME OVER</h2>
+          <div class="modal-body">
+            <p class="final-score-text">FINAL SCORE: <span id="final-score">0</span></p>
+          </div>
+          <button id="modal-restart-btn" class="arcade-btn neon-btn" type="button">PLAY AGAIN</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Mobile Virtual D-Pad -->
+    <section id="dpad" class="dpad-container" aria-label="Directional Controls">
+      <div class="dpad-row">
+        <button id="dpad-up" class="dpad-btn" type="button" aria-label="Up">▲</button>
+      </div>
+      <div class="dpad-row dpad-middle">
+        <button id="dpad-left" class="dpad-btn" type="button" aria-label="Left">◀</button>
+        <div class="dpad-center-hub"></div>
+        <button id="dpad-right" class="dpad-btn" type="button" aria-label="Right">▶</button>
+      </div>
+      <div class="dpad-row">
+        <button id="dpad-down" class="dpad-btn" type="button" aria-label="Down">▼</button>
+      </div>
+    </section>
+
+    <!-- Instructions / Footer -->
+    <footer class="cabinet-footer">
+      <p class="controls-hint">Controls: <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> or <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> | <kbd>Space</kbd> to Pause</p>
+    </footer>
+  </div>
+
+  <!-- Game Scripts (Wave 1: game.js / Wave 2: app.js) -->
+  <script src="game.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
