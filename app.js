@@ -7,29 +7,46 @@
 (function () {
   'use strict';
 
-  // Obtain Game class (window or required module)
-  const GameClass = typeof window !== 'undefined' && window.TicTacToeGame 
-    ? window.TicTacToeGame 
-    : (typeof TicTacToeGame !== 'undefined' ? TicTacToeGame : null);
-
-  if (!GameClass) {
-    console.error('TicTacToeGame class not found. Ensure game.js is loaded before app.js.');
-    return;
+  // Helper to obtain Game class from window or scope
+  function getGameClass() {
+    if (typeof window !== 'undefined' && window.TicTacToeGame) {
+      return window.TicTacToeGame;
+    }
+    if (typeof TicTacToeGame !== 'undefined') {
+      return TicTacToeGame;
+    }
+    return null;
   }
 
-  const game = new GameClass();
+  let game = null;
+
+  function initGameInstance() {
+    if (!game) {
+      const GameClass = getGameClass();
+      if (GameClass) {
+        game = new GameClass();
+      }
+    }
+    return game;
+  }
+
+  // Pre-initialize game instance
+  initGameInstance();
 
   // DOM element references
-  let scoreXEl;
-  let scoreOEl;
-  let scoreTiesEl;
-  let statusMessageEl;
-  let boardEl;
-  let cellEls;
-  let resetBtn;
-  let resetAllBtn;
+  let scoreXEl = null;
+  let scoreOEl = null;
+  let scoreTiesEl = null;
+  let statusMessageEl = null;
+  let boardEl = null;
+  let cellEls = null;
+  let resetBtn = null;
+  let resetAllBtn = null;
+  let listenersAttached = false;
 
   function initDOM() {
+    initGameInstance();
+
     scoreXEl = document.getElementById('score-x');
     scoreOEl = document.getElementById('score-o');
     scoreTiesEl = document.getElementById('score-ties');
@@ -39,46 +56,59 @@
     resetBtn = document.getElementById('reset-btn');
     resetAllBtn = document.getElementById('reset-all-btn');
 
-    if (boardEl) {
-      boardEl.addEventListener('click', handleBoardClick);
-    }
-
-    if (resetBtn) {
-      resetBtn.addEventListener('click', handleResetRound);
-    }
-
-    if (resetAllBtn) {
-      resetAllBtn.addEventListener('click', handleResetAll);
+    if (!listenersAttached) {
+      if (boardEl) {
+        boardEl.addEventListener('click', handleBoardClick);
+      }
+      if (resetBtn) {
+        resetBtn.addEventListener('click', handleResetRound);
+      }
+      if (resetAllBtn) {
+        resetAllBtn.addEventListener('click', handleResetAll);
+      }
+      listenersAttached = true;
     }
 
     render();
   }
 
   function handleBoardClick(event) {
+    const activeGame = initGameInstance();
+    if (!activeGame) return;
+
     const target = event.target.closest('.cell');
     if (!target) return;
 
     const index = parseInt(target.getAttribute('data-index'), 10);
     if (isNaN(index)) return;
 
-    const moveResult = game.makeMove(index);
+    const moveResult = activeGame.makeMove(index);
     if (moveResult && moveResult.success) {
       render();
     }
   }
 
   function handleResetRound() {
-    game.resetRound();
-    render();
+    const activeGame = initGameInstance();
+    if (activeGame) {
+      activeGame.resetRound();
+      render();
+    }
   }
 
   function handleResetAll() {
-    game.resetGame();
-    render();
+    const activeGame = initGameInstance();
+    if (activeGame) {
+      activeGame.resetGame();
+      render();
+    }
   }
 
   function render() {
-    const state = game.getState();
+    const activeGame = initGameInstance();
+    if (!activeGame) return;
+
+    const state = activeGame.getState();
 
     // 1. Update Scoreboard
     if (scoreXEl) scoreXEl.textContent = state.scores.X;
@@ -104,6 +134,8 @@
       cellEls.forEach((cell) => {
         const index = parseInt(cell.getAttribute('data-index'), 10);
         const mark = state.board[index];
+        const row = Math.floor(index / 3) + 1;
+        const col = (index % 3) + 1;
 
         // Mark display
         cell.textContent = mark || '';
@@ -120,13 +152,18 @@
           cell.classList.add('winning');
         }
 
-        // Disabled status
+        // Disabled status and accessibility labels
         cell.disabled = isGameOver || mark !== null;
+        if (mark) {
+          cell.setAttribute('aria-label', `Row ${row}, Column ${col}, ${mark}`);
+        } else {
+          cell.setAttribute('aria-label', `Row ${row}, Column ${col}`);
+        }
       });
     }
   }
 
-  // Initialize when DOM ready
+  // Auto-initialize when DOM is ready in browser environment
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', initDOM);
@@ -135,23 +172,27 @@
     }
   }
 
-  // Expose controller for testability and inspection
+  // Public interface for testability and external controllers
+  const controllerApi = {
+    get game() {
+      return initGameInstance();
+    },
+    set game(instance) {
+      game = instance;
+    },
+    initDOM,
+    init: initDOM,
+    render,
+    handleBoardClick,
+    handleResetRound,
+    handleResetAll
+  };
+
   if (typeof window !== 'undefined') {
-    window.app = {
-      game,
-      render,
-      handleBoardClick,
-      handleResetRound,
-      handleResetAll
-    };
+    window.app = controllerApi;
   }
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-      game,
-      render,
-      handleResetRound,
-      handleResetAll
-    };
+    module.exports = controllerApi;
   }
 })();
