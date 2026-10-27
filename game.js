@@ -34,7 +34,12 @@ class TicTacToeGame {
      * @returns {Object} Result object { success, winner, isDraw, winningLine, currentPlayer }
      */
     makeMove(index) {
-        const cellIndex = Number(index);
+        let cellIndex = NaN;
+        if (typeof index === 'number') {
+            cellIndex = index;
+        } else if (typeof index === 'string' && index.trim() !== '') {
+            cellIndex = Number(index);
+        }
 
         // Validation: must be valid integer index between 0 and 8
         if (!Number.isInteger(cellIndex) || cellIndex < 0 || cellIndex > 8) {
