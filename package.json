@@ -1,0 +1,13 @@
+{
+  "name": "moviehub-v2",
+  "version": "1.0.0",
+  "description": "Movie Database & Review Platform V2",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
