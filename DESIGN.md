@@ -1,36 +1,38 @@
-# Technical Blueprint & Architecture Design: Movie Review & Rating Web Application
+# Technical Blueprint & Architecture Design: Movie Database, Reviews & Ratings Application
 
 ## 1. Overview & Technical Stack
-- **Feature Branch**: `feature-movie-app`
-- **Application Type**: Full-Stack Client-Server Movie Review & Rating Application
-- **Frontend Stack**: Vanilla HTML5, CSS3, Modern ES6+ JavaScript (Zero external frontend frameworks or build steps)
-- **Backend Stack**: Node.js & Express REST API with In-Memory Data Store, Input Validation, and CORS support
-- **Containerization**: Lightweight Nginx container listening on port `8080` serving static frontend assets and routing API requests
-- **Design Philosophy**: Strict file separation and decoupled contract boundaries enabling parallel implementation by Athos, Porthos, and Aramis without merge conflicts.
+- **Sprint**: Movie App Sprint 1 (Sprint ID: 26)
+- **Feature Branch**: `feature-movie-reviews`
+- **Application Type**: Client-Server Movie Catalog, Review & Rating Web Application
+- **Frontend Tech Stack**: Semantic HTML5, Responsive Modern CSS3 (Dark cinematic aesthetic), Vanilla ES6+ JavaScript (Zero external frontend frameworks, zero build step)
+- **Backend Tech Stack**: Node.js & Express REST API with In-Memory Data Store, Input Validation, and CORS support
+- **Containerization**: Lightweight Nginx Alpine container serving static frontend assets on port `8080` (compatible with Google Cloud Run `cloudbuild.yaml`)
+- **Execution Architecture**: 100% decoupled modular architecture partitioned across disjoint files. Athos, Porthos, and Aramis can build, test, and commit in parallel in **Wave 1** with zero merge conflicts.
 
 ---
 
-## 2. Modular File Tree & Task Ownership
+## 2. Modular File Tree & Ownership
+
 ```text
 .
-├── DESIGN.md           # Architecture blueprint & technical contracts (ArchitectAlex)
-├── server.js           # Express REST API, in-memory store, seed data, validation (SCRUM-123)
-├── package.json        # Node.js backend dependencies and start scripts (SCRUM-123)
-├── index.html          # Semantic HTML5 layout, catalog view, modal, review form (SCRUM-124)
-├── styles.css          # Cinematic dark theme, responsive grid, modal & star styles (SCRUM-124)
-├── Dockerfile          # Nginx container configuration listening on port 8080 (SCRUM-124)
-├── nginx.conf          # Nginx server block routing static files & proxying /api/ (SCRUM-124)
-├── .dockerignore       # Ignored files for Docker build context (SCRUM-124)
-├── api.js              # Client-side REST API wrapper and HTTP communication (SCRUM-125)
-└── app.js              # UI controller, event bindings, star widget, dynamic DOM updates (SCRUM-125)
+├── DESIGN.md           # Architecture blueprint & contracts (ArchitectAlex)
+├── server.js           # Express REST API, in-memory store, seed data, validation (SCRUM-127 - Porthos)
+├── package.json        # Node.js backend dependencies and start scripts (SCRUM-127 - Porthos)
+├── index.html          # Semantic HTML5 layout, catalog view, modal dialog, review form (SCRUM-129 - Athos)
+├── styles.css          # Cinematic dark theme, responsive grid, modal, star widget (SCRUM-129 - Athos)
+├── Dockerfile          # Nginx container configuration listening on port 8080 (SCRUM-129 - Athos)
+├── nginx.conf          # Nginx server block routing static files & proxying /api/ (SCRUM-129 - Athos)
+├── .dockerignore       # Build context exclusion file (SCRUM-129 - Athos)
+├── api.js              # REST API client wrapper & offline/fallback data handler (SCRUM-130 - Aramis)
+└── app.js              # UI controller, event bindings, star widget, dynamic DOM updates (SCRUM-130 - Aramis)
 ```
 
 ---
 
-## 3. Backend REST API Specification (`server.js` - SCRUM-123)
+## 3. Backend REST API Specification (`server.js` & `package.json` - SCRUM-127)
 
 ### 3.1 Data Model & Seed Movies
-Each movie record in the in-memory array contains:
+Each movie record in the in-memory store contains:
 ```javascript
 {
   id: 1,
@@ -40,103 +42,128 @@ Each movie record in the in-memory array contains:
   director: "Christopher Nolan",
   posterUrl: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500",
   synopsis: "A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O.",
-  ratings: [5, 4, 5, 5, 4], // Array of numeric ratings (1-5)
+  ratings: [5, 4, 5, 5, 4], // Array of numbers (1-5)
   reviews: [
     {
       id: "rev-1",
-      author: "Alice",
+      author: "Alice Johnson",
       rating: 5,
-      comment: "A mind-bending cinematic masterpiece with stunning visuals!",
-      date: "2026-10-25T12:00:00Z"
+      comment: "A mind-bending cinematic masterpiece with breathtaking visual effects and score!",
+      date: "2026-10-25T14:30:00.000Z"
     }
   ]
 }
 ```
-*Provide at least 5 diverse seed movies across genres (e.g., Sci-Fi, Drama, Action, Animation, Thriller).*
+*Provide at least 6 diverse seed movies across distinct genres (e.g., Sci-Fi, Action, Drama, Crime, Animation, Thriller).*
 
 ### 3.2 Computed Movie Fields
-When returning movies in `GET /api/movies` or `GET /api/movies/:id`, compute:
-- `averageRating`: Rounded to 1 decimal place (e.g., `4.6`), or `0` if no ratings.
-- `ratingCount`: Total count of ratings (`ratings.length`).
-- `reviewCount`: Total count of reviews (`reviews.length`).
+When returning movies in `GET /api/movies` or `GET /api/movies/:id`, compute and include:
+- `averageRating`: Numeric value rounded to 1 decimal place (e.g., `4.6`), or `0` if no ratings exist.
+- `ratingCount`: Integer count of submitted ratings (`ratings.length`).
+- `reviewCount`: Integer count of submitted reviews (`reviews.length`).
 
 ### 3.3 Endpoints Contract
-Express app runs on `process.env.PORT || 3000` with `cors()` enabled and `express.json()` middleware.
+Express application runs on `process.env.PORT || 3000` with `cors()` enabled and `express.json()` middleware.
 
-1. `GET /api/movies`
-   - **Query Params**: Optional `?genre=Sci-Fi` or `?search=Inception`
+1. **`GET /api/movies`**
+   - **Query Params**:
+     - `search` (optional): Case-insensitive substring match on movie `title`, `director`, or `synopsis`.
+     - `genre` (optional): Case-insensitive match on movie `genre` (or `"all"` for all).
    - **Status**: `200 OK`
-   - **Response Body**: Array of movie summary objects (all movie fields, computed `averageRating`, `ratingCount`, `reviewCount`).
+   - **Response Body**: Array of movie summary objects with computed fields (`id`, `title`, `year`, `genre`, `director`, `posterUrl`, `synopsis`, `averageRating`, `ratingCount`, `reviewCount`, `reviews`).
 
-2. `GET /api/movies/:id`
+2. **`GET /api/movies/:id`**
+   - **URL Param**: `:id` (numeric or string ID)
    - **Status**: `200 OK` on match; `404 Not Found` if id not found (`{ "error": "Movie not found" }`).
-   - **Response Body**: Single movie object with complete `reviews` array and computed ratings.
+   - **Response Body**: Single movie object with complete `reviews` array and computed rating statistics.
 
-3. `POST /api/movies/:id/ratings`
+3. **`POST /api/movies/:id/ratings`**
+   - **URL Param**: `:id`
    - **Request Body**: `{ "rating": 5 }`
-   - **Validation**: `rating` must be an integer between 1 and 5. Return `400 Bad Request` if invalid.
+   - **Validation**: `rating` must be an integer between 1 and 5. Return `400 Bad Request` (`{ "error": "Rating must be an integer between 1 and 5" }`) if invalid. Return `404 Not Found` if movie ID does not exist.
    - **Behavior**: Appends rating to movie's `ratings` array.
    - **Status**: `200 OK`
-   - **Response Body**: `{ "message": "Rating submitted successfully", "averageRating": 4.7, "ratingCount": 6 }`
+   - **Response Body**: `{ "message": "Rating recorded successfully", "averageRating": 4.7, "ratingCount": 6 }`
 
-4. `POST /api/movies/:id/reviews`
+4. **`POST /api/movies/:id/reviews`**
+   - **URL Param**: `:id`
    - **Request Body**:
      ```json
      {
-       "author": "Marcus",
+       "author": "Marcus Brody",
        "rating": 5,
-       "comment": "Unbelievable storytelling and directing!"
+       "comment": "Unbelievable storytelling and directing! A must-watch."
      }
      ```
-   - **Validation**: `author` (non-empty string), `comment` (non-empty string), `rating` (integer 1-5). Return `400 Bad Request` if missing or invalid.
+   - **Validation**:
+     - `author`: Non-empty string.
+     - `comment`: Non-empty string.
+     - `rating`: Integer between 1 and 5.
+     - Return `400 Bad Request` (`{ "error": "Author, comment, and valid rating (1-5) are required" }`) if validation fails.
+     - Return `404 Not Found` if movie ID not found.
    - **Behavior**:
-     - Generates unique review `id` (e.g. `rev-${Date.now()}`), sets ISO string `date`.
-     - Appends review to `reviews` array.
-     - Also pushes `rating` to movie's `ratings` array.
+     - Generates unique review `id` (e.g. `rev-${Date.now()}`), sets ISO string `date` (`new Date().toISOString()`).
+     - Appends review object to movie's `reviews` array.
+     - Appends `rating` to movie's `ratings` array.
    - **Status**: `201 Created`
    - **Response Body**:
      ```json
      {
-       "message": "Review added successfully",
-       "review": { "id": "rev-...", "author": "Marcus", "rating": 5, "comment": "...", "date": "..." },
+       "message": "Review submitted successfully",
+       "review": { "id": "rev-1730000000000", "author": "Marcus Brody", "rating": 5, "comment": "...", "date": "..." },
        "averageRating": 4.7,
        "ratingCount": 6,
        "reviewCount": 2
      }
      ```
 
-5. Static File Fallback (Optional convenience for dev):
-   - `app.use(express.static('.'))` allows serving frontend directly from port 3000 if accessed directly.
+5. **Static File Fallback / Health Check**:
+   - `GET /health` or `GET /api/health` returns `{ "status": "ok" }`.
+   - `app.use(express.static('.'))` allows serving static frontend assets directly from port 3000 for local standalone testing.
+
+### 3.4 `package.json` Specifications
+- Name: `movie-database-reviews-app`
+- Main: `server.js`
+- Scripts: `"start": "node server.js"`, `"dev": "node --watch server.js"`
+- Dependencies: `express`, `cors`
 
 ---
 
-## 4. Frontend DOM IDs, HTML Structure & Styling Contracts (`index.html` & `styles.css` - SCRUM-124)
+## 4. Frontend DOM IDs, HTML Structure & Styling Contracts (`index.html` & `styles.css` - SCRUM-129)
 
 ### 4.1 HTML Structure (`index.html`) Contract
 `index.html` must provide the exact IDs and element hierarchies:
 
+- **Document Head**:
+  - `<meta charset="UTF-8">`
+  - `<meta name="viewport" content="width=device-width, initial-scale=1.0">`
+  - `<title>CineCritique - Movie Database & Reviews</title>`
+  - `<link rel="stylesheet" href="styles.css">`
+
 - **App Header & Navigation**:
   - Container: `<header class="app-header">`
-  - Logo/Title: `<div class="logo"><span class="logo-icon">🎬</span> CineCritique</div>`
-  - Search bar input: `<input type="text" id="search-input" placeholder="Search movies by title, director...">`
-  - Genre filter dropdown: `<select id="genre-filter"><option value="all">All Genres</option></select>`
+  - Logo/Branding: `<div class="logo"><span class="logo-icon">🎬</span> CineCritique</div>`
+  - Search & Filter Controls:
+    - Search input: `<input type="text" id="search-input" placeholder="Search movies by title, director, keyword..." aria-label="Search movies">`
+    - Genre filter dropdown: `<select id="genre-filter" aria-label="Filter by genre"><option value="all">All Genres</option></select>`
 
-- **Status & Loading Indicator**:
+- **Status & Loading Feedback**:
   - `<div id="status-message" class="status-message hidden" aria-live="polite"></div>`
   - `<div id="loading-spinner" class="spinner hidden"></div>`
 
 - **Movie Catalog Section**:
   - Container: `<main class="catalog-container">`
-  - Section Header: `<h2 class="section-title">Now Showing</h2>`
-  - Movies Grid: `<div id="movie-grid" class="movie-grid" role="region" aria-label="Movie Catalog"></div>`
+  - Section Header: `<h2 class="section-title">Explore Catalog</h2>`
+  - Movies Grid Container: `<div id="movie-grid" class="movie-grid" role="region" aria-label="Movie Catalog"></div>`
 
-- **Movie Card Template / Render Contract** (Populated dynamically into `#movie-grid`):
+- **Movie Card Template Structure** (Rendered dynamically into `#movie-grid`):
   ```html
-  <div class="movie-card" data-movie-id="${movie.id}">
+  <article class="movie-card" data-movie-id="${movie.id}">
     <img class="movie-poster" src="${movie.posterUrl}" alt="${movie.title} poster" loading="lazy">
     <div class="movie-card-info">
-      <div class="movie-card-genre">${movie.genre}</div>
-      <h3 class="movie-card-title">${movie.title} (${movie.year})</h3>
+      <span class="movie-card-genre">${movie.genre}</span>
+      <h3 class="movie-card-title">${movie.title} <span class="movie-year">(${movie.year})</span></h3>
+      <p class="movie-director">Directed by ${movie.director}</p>
       <div class="movie-card-rating">
         <span class="star-icon">★</span>
         <span class="rating-value">${movie.averageRating}</span>
@@ -144,19 +171,18 @@ Express app runs on `process.env.PORT || 3000` with `cors()` enabled and `expres
       </div>
       <button class="btn btn-secondary view-details-btn" data-movie-id="${movie.id}">View Reviews</button>
     </div>
-  </div>
+  </article>
   ```
 
 - **Movie Details & Review Modal**:
-  - Modal Backdrop: `<div id="movie-modal" class="modal hidden" role="dialog" aria-modal="true">`
-  - Modal Content: `<div class="modal-content">`
-  - Close button: `<button id="close-modal-btn" class="modal-close-btn" aria-label="Close modal">&times;</button>`
-  - Details Container: `<div id="modal-movie-details"></div>`
-    - Title, director, year, genre badge, synopsis, current average rating display.
+  - Modal Backdrop: `<div id="movie-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">`
+  - Modal Card: `<div class="modal-content">`
+  - Modal Close Button: `<button id="close-modal-btn" class="modal-close-btn" aria-label="Close modal">&times;</button>`
+  - Details Container: `<div id="modal-movie-details"></div>` (displays movie title, director, year, genre, poster, synopsis, average rating)
   - Review & Rating Section: `<div class="modal-review-section">`
-    - Subtitle: `<h3>Add Your Review</h3>`
-    - Star Rating Input Container:
-      - `<div id="rating-widget" class="rating-widget" role="radiogroup" aria-label="Star Rating">`
+    - Subheading: `<h3>Add Your Review</h3>`
+    - Star Rating Input Widget:
+      - Container: `<div id="rating-widget" class="rating-widget" role="radiogroup" aria-label="Star Rating">`
       - 5 interactive star buttons:
         - `<button type="button" class="star-btn" data-value="1" aria-label="1 star">★</button>`
         - `<button type="button" class="star-btn" data-value="2" aria-label="2 stars">★</button>`
@@ -165,57 +191,90 @@ Express app runs on `process.env.PORT || 3000` with `cors()` enabled and `expres
         - `<button type="button" class="star-btn" data-value="5" aria-label="5 stars">★</button>`
     - Review Form:
       - `<form id="review-form">`
-      - Hidden rating input: `<input type="hidden" id="review-rating" name="rating" value="0">`
-      - Author input: `<input type="text" id="review-author" placeholder="Your Name" required>`
-      - Comment input: `<textarea id="review-comment" placeholder="Write your review here..." rows="3" required></textarea>`
-      - Submit button: `<button type="submit" id="submit-review-btn" class="btn btn-primary">Submit Review</button>`
+      - Hidden Rating Input: `<input type="hidden" id="review-rating" name="rating" value="0">`
+      - Author Input: `<input type="text" id="review-author" placeholder="Your Name" required>`
+      - Comment Input: `<textarea id="review-comment" placeholder="Share your thoughts about this movie..." rows="3" required></textarea>`
+      - Submit Button: `<button type="submit" id="submit-review-btn" class="btn btn-primary">Submit Review</button>`
   - Existing Reviews Section:
-    - Subtitle: `<h3>User Reviews (<span id="modal-review-count">0</span>)</h3>`
-    - Reviews list container: `<div id="modal-reviews-list" class="reviews-list"></div>`
+    - Subheading: `<h3>Community Reviews (<span id="modal-review-count">0</span>)</h3>`
+    - Review List: `<div id="modal-reviews-list" class="reviews-list"></div>`
+
+- **Review Item Template Structure** (Rendered into `#modal-reviews-list`):
+  ```html
+  <div class="review-item">
+    <div class="review-header">
+      <strong class="review-author">${review.author}</strong>
+      <span class="review-rating">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</span>
+      <time class="review-date">${formattedDate}</time>
+    </div>
+    <p class="review-comment">${review.comment}</p>
+  </div>
+  ```
 
 - **Toast Notification**:
   - `<div id="toast" class="toast hidden" role="alert"></div>`
 
-- **Script Inclusions**:
+- **Script Inclusions** (Placed at the end of `<body>`):
   ```html
   <script src="api.js"></script>
   <script src="app.js"></script>
   ```
 
 ### 4.2 CSS Styling Contracts (`styles.css`)
-- **Theme**: Modern cinematic dark palette (`--bg: #0f172a`, `--surface: #1e293b`, `--surface-hover: #334155`, `--accent: #e50914`, `--gold: #fbbf24`, `--text: #f8fafc`, `--text-muted: #94a3b8`).
-- **Catalog Grid (`.movie-grid`)**: Responsive CSS Grid (`display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem;`).
-- **Movie Cards (`.movie-card`)**: Rounded corners (`border-radius: 12px`), smooth hover transforms (`transform: translateY(-4px); box-shadow: 0 10px 25px rgba(0,0,0,0.5)`), poster aspect-ratio (`2 / 3`), overflow hidden.
-- **Star Rating Widget (`.rating-widget`, `.star-btn`)**: Large golden stars, hover highlighting (fills stars up to hovered position), `.selected` class for chosen rating.
-- **Modal (`.modal`, `.modal-content`)**: Fixed overlay backdrop with blur, centered card with max-width `700px`, scrollable content, smooth open transition.
-- **Toast (`.toast`)**: Fixed bottom-right notification pill with slide-in animation, success/error color variants.
-- **Responsive**: Mobile-friendly down to 320px viewport.
+- **Theme Variables**:
+  ```css
+  :root {
+    --bg-dark: #0f172a;
+    --surface-dark: #1e293b;
+    --surface-hover: #334155;
+    --border-color: #334155;
+    --accent-red: #e50914;
+    --gold-star: #fbbf24;
+    --text-primary: #f8fafc;
+    --text-muted: #94a3b8;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --transition: 0.2s ease;
+  }
+  ```
+- **Grid Layout**: Responsive CSS Grid for `#movie-grid` using `repeat(auto-fill, minmax(260px, 1fr))` with 1.5rem gap.
+- **Card Styling**: Poster aspect ratio `2 / 3` with `object-fit: cover`, smooth transform hover effect (`translateY(-4px)`), box shadow.
+- **Star Rating Widget**: Golden stars (`--gold-star`), interactive hover highlighting (all stars up to hovered button glow), `.selected` class persists chosen rating.
+- **Modal Dialog**: Fixed full-viewport overlay with backdrop blur, scrollable modal card, smooth open/close animation.
+- **Utility Classes**: `.hidden { display: none !important; }`, `.btn`, `.btn-primary`, `.btn-secondary`.
+- **Responsive**: Mobile-first fluid layout supporting screens from 320px to 4K displays.
 
 ---
 
-## 5. Client-Side API Integration & UI Controller (`api.js` & `app.js` - SCRUM-125)
+## 5. Client API Wrapper & UI Controller (`api.js` & `app.js` - SCRUM-130)
 
 ### 5.1 API Client Interface (`api.js`)
-Exposes `window.MovieAPI` with asynchronous methods:
+Exposes `window.MovieAPI` with asynchronous methods. Handles dual-mode operation (connecting to Express backend if available, or seamlessly falling back to comprehensive in-memory seed data with localStorage persistence if accessed statically via Nginx on port 8080):
 ```javascript
 const MovieAPI = {
-  // Automatically detects if running behind Nginx or direct Express
   baseUrl: window.location.port === '8080' || window.location.port === '3000' ? '/api' : 'http://localhost:3000/api',
 
+  // Fallback seed catalog in case REST API backend is not directly reached
+  seedCatalog: [ /* ... at least 6 detailed movies ... */ ],
+
   async getMovies(params = {}) {
-    // Returns array of movies
+    // Attempt fetch(`${this.baseUrl}/movies?...`)
+    // On failure, filter and return from local seed catalog
   },
 
   async getMovieById(id) {
-    // Returns single movie details with reviews
+    // Attempt fetch(`${this.baseUrl}/movies/${id}`)
+    // On failure, find and return from local seed catalog
   },
 
   async submitRating(movieId, rating) {
-    // Sends POST /api/movies/:id/ratings
+    // Attempt POST `${this.baseUrl}/movies/${movieId}/ratings`
+    // On failure, update local seed catalog ratings array and recalculate average
   },
 
   async submitReview(movieId, reviewData) {
-    // Sends POST /api/movies/:id/reviews
+    // Attempt POST `${this.baseUrl}/movies/${movieId}/reviews`
+    // On failure, create review item, append to movie's reviews and ratings, update local seed catalog
   }
 };
 window.MovieAPI = MovieAPI;
@@ -223,35 +282,39 @@ window.MovieAPI = MovieAPI;
 
 ### 5.2 Application Controller Contract (`app.js`)
 On `DOMContentLoaded`:
-1. **Catalog Rendering**:
-   - Calls `MovieAPI.getMovies()`, populates `#genre-filter` with unique genres.
+1. **Catalog Initialization**:
+   - Calls `MovieAPI.getMovies()`.
+   - Extracts unique genres to populate `#genre-filter` dropdown.
    - Renders movie cards into `#movie-grid`.
-2. **Search & Filter**:
-   - Input listener on `#search-input` and change listener on `#genre-filter`.
-   - Filters movies in-place or requests filtered list, updates `#movie-grid`.
-3. **Modal Handling**:
-   - Clicking `.view-details-btn` or card opens `#movie-modal`.
-   - Fetches full details via `MovieAPI.getMovieById(movieId)`.
-   - Renders movie summary, existing reviews in `#modal-reviews-list`, and resets rating widget & form.
-   - Clicking `#close-modal-btn` or modal backdrop closes the modal.
+2. **Search and Filtering**:
+   - `input` event on `#search-input` and `change` event on `#genre-filter`.
+   - Performs real-time filtering, updating `#movie-grid` with matching movie cards or friendly empty state message.
+3. **Modal Dialog Open/Close**:
+   - Event delegation on `#movie-grid` for `.view-details-btn` or card clicks.
+   - Calls `MovieAPI.getMovieById(movieId)`, populates `#modal-movie-details`, `#modal-review-count`, and `#modal-reviews-list`.
+   - Removes `.hidden` from `#movie-modal`.
+   - Closes modal on `#close-modal-btn` click, clicking backdrop outside modal card, or pressing `Escape`.
 4. **Interactive 5-Star Rating Widget**:
-   - Mouse hover over `.star-btn[data-value="N"]` highlights stars 1 through N.
-   - Click on `.star-btn[data-value="N"]` sets `#review-rating` input value to N and adds `.selected` class to stars 1..N.
-5. **Review Submission**:
-   - Intercepts `#review-form` submit event.
-   - Validates that a star rating >= 1 is selected, author and comment are non-empty.
-   - Calls `MovieAPI.submitReview(activeMovieId, { author, rating, comment })`.
+   - Mouse hover (`mouseenter`/`mouseleave`) on `.star-btn[data-value="N"]` highlights stars 1 through N with gold fill.
+   - Click on `.star-btn[data-value="N"]`:
+     - Sets `#review-rating` hidden input value to `N`.
+     - Adds `.selected` class to stars 1..N.
+5. **Review Submission Handling**:
+   - Intercepts `submit` event on `#review-form`.
+   - Validates that star rating >= 1, and author / comment fields are non-empty.
+   - Submits via `MovieAPI.submitReview(activeMovieId, { author, rating, comment })`.
    - On success:
-     - Prepend new review to `#modal-reviews-list`.
-     - Update `#modal-review-count` and movie rating summary.
-     - Reset form and star widget.
-     - Display success notification via `showToast('Review submitted successfully!')`.
-     - Update corresponding card in `#movie-grid` with updated `averageRating`.
-   - On error: Displays error message in toast or `#status-message`.
+     - Prepends newly created review to `#modal-reviews-list`.
+     - Updates `#modal-review-count` and modal rating statistics.
+     - Refreshes movie card rating badge in `#movie-grid`.
+     - Resets review form and star rating widget.
+     - Triggers `#toast` notification ("Review submitted successfully!").
+   - On error:
+     - Shows error toast or status message.
 
 ---
 
-## 6. Containerization & Deployment (`Dockerfile` & `nginx.conf` - SCRUM-124)
+## 6. Containerization & Deployment (`Dockerfile`, `nginx.conf`, `.dockerignore` - SCRUM-129)
 
 ### 6.1 `Dockerfile`
 ```dockerfile
@@ -274,7 +337,7 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
-    # Proxy API calls to Node Express backend if running in same container/host
+    # Proxy API calls to Node Express backend if available
     location /api/ {
         proxy_pass http://127.0.0.1:3000/api/;
         proxy_http_version 1.1;
@@ -299,24 +362,26 @@ cloudbuild.yaml
 
 ## 7. Task-to-File Mapping & Execution Waves
 
-All tasks operate on completely disjoint target files. Athos, Porthos, and Aramis can develop, test, and commit in **Wave 1 in parallel** without any merge conflicts:
+All sprint tasks are partitioned with **100% disjoint file ownership**. Athos, Porthos, and Aramis can execute simultaneously in **Wave 1 (Parallel)** with zero risk of merge conflicts:
 
 | Task Key | Task Title | Developer | Target Files | Wave |
 |---|---|---|---|---|
-| `SCRUM-123` | Backend REST API Service with In-Memory Movie Database | Porthos | `server.js`, `package.json` | **Wave 1 (Parallel)** |
-| `SCRUM-124` | Frontend UI Structure, Modern Styling & Movie Catalog Views | Athos | `index.html`, `styles.css`, `Dockerfile`, `nginx.conf`, `.dockerignore` | **Wave 1 (Parallel)** |
-| `SCRUM-125` | Client-Server API Integration, Rating Widget & Interactive Review Flow | Aramis | `api.js`, `app.js` | **Wave 1 (Parallel)** |
+| `SCRUM-127` | Backend In-Memory Database & REST API Service | Porthos | `server.js`, `package.json` | **Wave 1 (Parallel)** |
+| `SCRUM-129` | Frontend Responsive UI, Layout & Visual Styling | Athos | `index.html`, `styles.css`, `Dockerfile`, `nginx.conf`, `.dockerignore` | **Wave 1 (Parallel)** |
+| `SCRUM-130` | Client-Side Controller, Dynamic Event Handling & API Integration | Aramis | `api.js`, `app.js` | **Wave 1 (Parallel)** |
 
-### Developer Execution Instructions
-- **Porthos (SCRUM-123)**:
-  - Implement `server.js` and `package.json` with dependencies (`express`, `cors`).
-  - Provide seed data with at least 5 movies with full fields.
-  - Expose `GET /api/movies`, `GET /api/movies/:id`, `POST /api/movies/:id/ratings`, and `POST /api/movies/:id/reviews`.
-  - Ensure CORS is enabled and port `3000` is default.
-- **Athos (SCRUM-124)**:
-  - Build `index.html` with semantic containers and exact element IDs specified in Section 4.1.
-  - Implement `styles.css` with dark cinematic aesthetic, responsive movie card grid, modal styling, star widget visual states, and toast notifications.
-  - Provide `Dockerfile`, `nginx.conf`, and `.dockerignore` listening on port `8080`.
-- **Aramis (SCRUM-125)**:
-  - Implement `api.js` wrapping the REST endpoints with clear Promise-based helper functions (`window.MovieAPI`).
-  - Implement `app.js` managing catalog rendering, search/genre filters, modal open/close, star widget interaction, form submission, and live review appending.
+### Developer Execution Guidance
+- **Porthos (`SCRUM-127`)**:
+  - Owns: `server.js`, `package.json`
+  - Implement Express server on port 3000 with CORS and JSON parsing.
+  - Seed in-memory movie array (>= 6 movies across diverse genres).
+  - Provide endpoints: `GET /api/movies`, `GET /api/movies/:id`, `POST /api/movies/:id/ratings`, `POST /api/movies/:id/reviews`.
+- **Athos (`SCRUM-129`)**:
+  - Owns: `index.html`, `styles.css`, `Dockerfile`, `nginx.conf`, `.dockerignore`
+  - Implement semantic HTML layout and exact DOM IDs detailed in Section 4.1.
+  - Implement responsive dark cinematic stylesheet matching class contracts in Section 4.2.
+  - Implement Nginx Alpine Dockerfile listening on port 8080, `nginx.conf`, and `.dockerignore`.
+- **Aramis (`SCRUM-130`)**:
+  - Owns: `api.js`, `app.js`
+  - Implement `window.MovieAPI` communicating with backend endpoints and fallback seed catalog.
+  - Implement `app.js` wiring up catalog display, search/filter inputs, modal controls, 5-star interactive rating widget, and dynamic review submission.
