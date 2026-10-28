@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>RETOSNAKE 4K // CYBERPUNK 2084</title>
+  <!-- Strict relative path for Cloud Run subpath compatibility -->
+  <link rel="stylesheet" href="styles.css">
+  <!-- Retro Cyber Favicon via Data URI SVG -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%2305050f'/><polygon points='20,20 80,20 80,40 40,40 40,60 80,60 80,80 20,80' fill='%2300ffcc'/></svg>">
+</head>
+<body class="crt-enabled">
+  <!-- CRT Screen Glitch & Scanline Overlay -->
+  <div class="crt-overlay" id="crt-overlay" aria-hidden="true"></div>
+  <div class="crt-flicker" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <!-- Main Cyber-Deck Wrapper -->
+  <div class="cyber-container">
+    <!-- Top Cyberpunk Terminal Header -->
+    <header class="cyber-header">
+      <div class="brand-zone">
+        <div class="cyber-glitch-title" data-text="RETOSNAKE 4K">RETOSNAKE 4K</div>
+        <div class="cyber-subtitle">SYSTEM STATUS: <span class="status-online">ONLINE</span> // FIRMWARE: V4.0.9</div>
+      </div>
+      <div class="deck-controls">
+        <button id="crt-toggle" class="cyber-btn sm" title="Toggle CRT Scanline Effect">
+          <span class="btn-icon">⚡</span> CRT: <span id="crt-status">ON</span>
+        </button>
+        <button id="btn-audio-toggle" class="cyber-btn sm" title="Toggle Audio Synthesizer">
+          <span class="btn-icon" id="audio-icon">🔊</span> AUDIO: <span id="audio-status">ON</span>
+        </button>
+        <button id="leaderboard-btn" class="cyber-btn sm" title="View High Scores Leaderboard">
+          <span class="btn-icon">🏆</span> HIGH SCORES
+        </button>
+      </div>
+    </header>
+
+    <!-- Neon HUD Bar -->
+    <section class="neon-hud" aria-label="Game HUD">
+      <div class="hud-card score-card">
+        <span class="hud-label">NET.CREDITS</span>
+        <span class="hud-value neon-cyan" id="score-display">00000</span>
+      </div>
+      <div class="hud-card high-score-card">
+        <span class="hud-label">TOP.RECORD</span>
+        <span class="hud-value neon-pink" id="high-score-display">05000</span>
+      </div>
+      <div class="hud-card mult-card">
+        <span class="hud-label">NEURAL.MULT</span>
+        <span class="hud-value neon-yellow" id="multiplier-display">x1.0</span>
+      </div>
+      <div class="hud-card powerup-card" id="powerup-hud-container">
+        <div class="powerup-header">
+          <span class="hud-label">CYBER.MOD:</span>
+          <span class="powerup-name neon-green" id="powerup-label">NONE</span>
+        </div>
+        <div class="powerup-progress-track">
+          <div class="powerup-progress-fill" id="powerup-bar"></div>
+        </div>
+        <span class="powerup-countdown" id="powerup-timer">--</span>
+      </div>
+    </section>
+
+    <!-- Main Game Viewport & Canvas Stage -->
+    <main class="game-viewport">
+      <div class="canvas-wrapper">
+        <canvas id="game-canvas" width="800" height="600" aria-label="Cyber Snake Grid"></canvas>
+
+        <!-- Start / Instructions Overlay -->
+        <div class="screen-overlay" id="start-overlay">
+          <div class="overlay-panel">
+            <h1 class="panel-title neon-cyan">INITIATE RUNNER PROTOCOL</h1>
+            <p class="panel-desc">Navigate the cyber grid, consume decrypted memory nodes, and harvest high-tier neural power-ups.</p>
+            <div class="keybind-grid">
+              <div class="keybind-item"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> Navigate Snake</div>
+              <div class="keybind-item"><kbd>SPACE</kbd> or <kbd>P</kbd> Pause/Resume Grid</div>
+              <div class="keybind-item"><kbd>M</kbd> Mute / Unmute Cyber Synthesizer</div>
+            </div>
+            <div class="panel-actions">
+              <button id="btn-start" class="cyber-btn lg primary-glow">
+                <span class="btn-text">JACK IN // START RUN</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pause Overlay -->
+        <div class="screen-overlay hidden" id="pause-overlay">
+          <div class="overlay-panel">
+            <h2 class="panel-title neon-yellow">CYCLE SUSPENDED</h2>
+            <p class="panel-desc">Neural link paused. Ready to resume grid transmission.</p>
+            <div class="panel-actions">
+              <button id="btn-pause" class="cyber-btn primary-glow">
+                <span class="btn-text">RESUME PROTOCOL</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Game Over Modal / End Run Screen -->
+        <div class="screen-overlay hidden" id="game-over-modal">
+          <div class="overlay-panel modal-panel">
+            <h2 class="panel-title neon-pink">FLATLINE DETECTED</h2>
+            <div class="game-over-stats">
+              <div class="stat-row">
+                <span class="stat-label">FINAL HARVEST:</span>
+                <span class="stat-value neon-cyan" id="final-score">0</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">RECORD BREAK:</span>
+                <span class="stat-value neon-yellow" id="record-break-status">NO</span>
+              </div>
+            </div>
+
+            <form id="save-score-form" class="save-score-form" onsubmit="return false;">
+              <label for="player-name-input" class="input-label">ENTER RUNNER HANDLE:</label>
+              <div class="input-group">
+                <input type="text" id="player-name-input" maxlength="12" placeholder="CYBER_GHOST" autocomplete="off" spellcheck="false">
+                <button type="button" id="save-score-btn" class="cyber-btn">SAVE</button>
+              </div>
+            </form>
+
+            <div class="panel-actions">
+              <button id="btn-restart" class="cyber-btn lg primary-glow">
+                <span class="btn-text">REBOOT SYSTEM // PLAY AGAIN</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leaderboard Modal -->
+        <div class="screen-overlay hidden" id="leaderboard-modal">
+          <div class="overlay-panel modal-panel leaderboard-panel">
+            <div class="modal-header">
+              <h2 class="panel-title neon-cyan">RUNNER HALL OF FAME</h2>
+              <button id="leaderboard-close-btn" class="close-icon-btn" aria-label="Close Leaderboard">&times;</button>
+            </div>
+            <div class="leaderboard-table-header">
+              <span class="col-rank">RANK</span>
+              <span class="col-handle">HANDLE</span>
+              <span class="col-wave">WAVE</span>
+              <span class="col-score">CREDITS</span>
+            </div>
+            <ul id="leaderboard-list" class="leaderboard-list">
+              <!-- Dynamically populated by LeaderboardManager -->
+            </ul>
+            <div class="panel-actions">
+              <button id="leaderboard-ok-btn" class="cyber-btn">CLOSE MATRIX</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Touch / D-Pad Controls for Mobile & Tablets -->
+      <section class="touch-controls" id="touch-controls" aria-label="Virtual D-Pad Controls">
+        <div class="dpad-grid">
+          <div class="dpad-spacer"></div>
+          <button id="dpad-up" class="dpad-btn" aria-label="Up">▲</button>
+          <div class="dpad-spacer"></div>
+          <button id="dpad-left" class="dpad-btn" aria-label="Left">◀</button>
+          <button id="dpad-center" class="dpad-btn dpad-center" aria-label="Center Pause">⏸</button>
+          <button id="dpad-right" class="dpad-btn" aria-label="Right">▶</button>
+          <div class="dpad-spacer"></div>
+          <button id="dpad-down" class="dpad-btn" aria-label="Down">▼</button>
+          <div class="dpad-spacer"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom System Deck Info Footer -->
+    <footer class="cyber-footer">
+      <div class="footer-left">
+        <span class="tech-tag">4K NEON ENGINE</span>
+        <span class="tech-tag">WEB AUDIO SYNTH</span>
+        <span class="tech-tag">RETRO CRT SHADER</span>
+      </div>
+      <div class="footer-right">
+        <span>GRID PROTOCOL &copy; 2084 RETOSNAKE4K DECK</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Defensive UI initialization & wireframe handlers -->
+  <script>
+    // CRT toggle button listener
+    document.addEventListener('DOMContentLoaded', () => {
+      const crtBtn = document.getElementById('crt-toggle');
+      const crtStatus = document.getElementById('crt-status');
+      if (crtBtn && crtStatus) {
+        crtBtn.addEventListener('click', () => {
+          const isEnabled = document.body.classList.toggle('crt-enabled');
+          crtStatus.textContent = isEnabled ? 'ON' : 'OFF';
+        });
+      }
+
+      // Audio toggle button listener fallback
+      const audioBtn = document.getElementById('btn-audio-toggle');
+      const audioStatus = document.getElementById('audio-status');
+      const audioIcon = document.getElementById('audio-icon');
+      if (audioBtn) {
+        audioBtn.addEventListener('click', () => {
+          if (window.CyberAudio && typeof window.CyberAudio.toggleMute === 'function') {
+            const muted = window.CyberAudio.toggleMute();
+            if (audioStatus) audioStatus.textContent = muted ? 'OFF' : 'ON';
+            if (audioIcon) audioIcon.textContent = muted ? '🔇' : '🔊';
+          }
+        });
+      }
+
+      // Leaderboard modal toggle
+      const lbBtn = document.getElementById('leaderboard-btn');
+      const lbModal = document.getElementById('leaderboard-modal');
+      const lbCloseBtn = document.getElementById('leaderboard-close-btn');
+      const lbOkBtn = document.getElementById('leaderboard-ok-btn');
+      const openLeaderboard = () => {
+        if (lbModal) {
+          lbModal.classList.remove('hidden');
+          if (window.LeaderboardManager && typeof window.LeaderboardManager.getScores === 'function') {
+            const list = document.getElementById('leaderboard-list');
+            if (list) {
+              const scores = window.LeaderboardManager.getScores();
+              list.innerHTML = scores.map((s, idx) => `
+                <li class="leaderboard-item ${idx === 0 ? 'top-rank' : ''}">
+                  <span class="col-rank">#${idx + 1}</span>
+                  <span class="col-handle">${s.name || 'UNKNOWN'}</span>
+                  <span class="col-wave">W${s.wave || 1}</span>
+                  <span class="col-score neon-cyan">${s.score}</span>
+                </li>
+              `).join('');
+            }
+          }
+        }
+      };
+      const closeLeaderboard = () => {
+        if (lbModal) lbModal.classList.add('hidden');
+      };
+      if (lbBtn) lbBtn.addEventListener('click', openLeaderboard);
+      if (lbCloseBtn) lbCloseBtn.addEventListener('click', closeLeaderboard);
+      if (lbOkBtn) lbOkBtn.addEventListener('click', closeLeaderboard);
+    });
+  </script>
+
+  <!-- Script Load Order Contract (strictly relative paths) -->
+  <script src="audio.js"></script>
+  <script src="powerups.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
