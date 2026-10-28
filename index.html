@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="CineCritique - Movie Review & Rating Web Application">
+  <title>CineCritique - Movie Reviews & Ratings</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- App Header & Navigation -->
+  <header class="app-header">
+    <div class="header-content">
+      <div class="logo"><span class="logo-icon">🎬</span> CineCritique</div>
+      <div class="header-actions">
+        <div class="search-box">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input type="text" id="search-input" placeholder="Search movies by title, director...">
+        </div>
+        <div class="filter-box">
+          <select id="genre-filter">
+            <option value="all">All Genres</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Status & Loading Indicator -->
+  <div class="indicator-wrapper">
+    <div id="status-message" class="status-message hidden" aria-live="polite"></div>
+    <div id="loading-spinner" class="spinner hidden"></div>
+  </div>
+
+  <!-- Movie Catalog Section -->
+  <main class="catalog-container">
+    <h2 class="section-title">Now Showing</h2>
+    <div id="movie-grid" class="movie-grid" role="region" aria-label="Movie Catalog"></div>
+  </main>
+
+  <!-- Movie Details & Review Modal -->
+  <div id="movie-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <button id="close-modal-btn" class="modal-close-btn" aria-label="Close modal">&times;</button>
+      
+      <div id="modal-movie-details"></div>
+
+      <div class="modal-review-section">
+        <h3>Add Your Review</h3>
+        <div id="rating-widget" class="rating-widget" role="radiogroup" aria-label="Star Rating">
+          <button type="button" class="star-btn" data-value="1" aria-label="1 star">★</button>
+          <button type="button" class="star-btn" data-value="2" aria-label="2 stars">★</button>
+          <button type="button" class="star-btn" data-value="3" aria-label="3 stars">★</button>
+          <button type="button" class="star-btn" data-value="4" aria-label="4 stars">★</button>
+          <button type="button" class="star-btn" data-value="5" aria-label="5 stars">★</button>
+        </div>
+        <form id="review-form">
+          <input type="hidden" id="review-rating" name="rating" value="0">
+          <div class="form-field">
+            <input type="text" id="review-author" placeholder="Your Name" required>
+          </div>
+          <div class="form-field">
+            <textarea id="review-comment" placeholder="Write your review here..." rows="3" required></textarea>
+          </div>
+          <button type="submit" id="submit-review-btn" class="btn btn-primary">Submit Review</button>
+        </form>
+      </div>
+
+      <div class="modal-existing-reviews">
+        <h3>User Reviews (<span id="modal-review-count">0</span>)</h3>
+        <div id="modal-reviews-list" class="reviews-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast hidden" role="alert"></div>
+
+  <!-- Script Inclusions -->
+  <script src="api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
