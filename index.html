@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic-Tac-Toe</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="game-container">
+    <header>
+      <h1 id="game-title">Tic-Tac-Toe</h1>
+    </header>
+
+    <div id="status" class="status" aria-live="polite">Player X's Turn</div>
+
+    <section id="scoreboard" class="scoreboard" aria-label="Scoreboard">
+      <div id="score-x-container" class="score-card">
+        <span class="label">Player X:</span>
+        <span id="score-x" class="score-value">0</span>
+      </div>
+      <div id="score-o-container" class="score-card">
+        <span class="label">Player O:</span>
+        <span id="score-o" class="score-value">0</span>
+      </div>
+      <div id="score-ties-container" class="score-card">
+        <span class="label">Ties:</span>
+        <span id="score-ties" class="score-value">0</span>
+      </div>
+    </section>
+
+    <div id="board" class="board" role="grid" aria-label="Tic-Tac-Toe Board">
+      <button class="cell" id="cell-0" data-index="0" aria-label="Square 1" role="gridcell"></button>
+      <button class="cell" id="cell-1" data-index="1" aria-label="Square 2" role="gridcell"></button>
+      <button class="cell" id="cell-2" data-index="2" aria-label="Square 3" role="gridcell"></button>
+      <button class="cell" id="cell-3" data-index="3" aria-label="Square 4" role="gridcell"></button>
+      <button class="cell" id="cell-4" data-index="4" aria-label="Square 5" role="gridcell"></button>
+      <button class="cell" id="cell-5" data-index="5" aria-label="Square 6" role="gridcell"></button>
+      <button class="cell" id="cell-6" data-index="6" aria-label="Square 7" role="gridcell"></button>
+      <button class="cell" id="cell-7" data-index="7" aria-label="Square 8" role="gridcell"></button>
+      <button class="cell" id="cell-8" data-index="8" aria-label="Square 9" role="gridcell"></button>
+    </div>
+
+    <section id="controls" class="controls" aria-label="Game Controls">
+      <button id="reset-btn" class="btn">New Round</button>
+      <button id="reset-score-btn" class="btn btn-secondary">Reset Scores</button>
+    </section>
+  </main>
+
+  <script src="game.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
