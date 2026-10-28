@@ -1,0 +1,13 @@
+{
+  "name": "cinecritique-movie-app",
+  "version": "1.0.0",
+  "description": "Full-Stack Movie Review & Rating Web Application REST API backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
