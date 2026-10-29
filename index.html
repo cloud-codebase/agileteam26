@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TicTacToe 4K — Kid-Friendly Fun!</title>
+  <!-- Relative stylesheet reference (no leading slash for subpath routing) -->
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <!-- Floating bubble background effects -->
+  <div class="bg-decorations" aria-hidden="true">
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+  </div>
+
+  <!-- Celebratory Confetti Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <main class="game-container">
+    <!-- Header -->
+    <header class="game-header">
+      <h1 class="game-title">
+        <span class="title-icon">🐶</span>
+        <span>Tic-Tac-Toe</span>
+        <span class="title-icon">🐱</span>
+      </h1>
+      <p class="game-subtitle">Fun &amp; Playful Matches for Kids!</p>
+    </header>
+
+    <!-- Controls Bar -->
+    <section class="controls-bar" aria-label="Game Settings">
+      <div class="mode-wrapper">
+        <label for="mode-select">Game Mode:</label>
+        <select id="mode-select" class="custom-select" aria-label="Select Opponent Mode">
+          <option value="pve" selected>🤖 vs Friendly Bot</option>
+          <option value="pvp">👥 Pass &amp; Play</option>
+        </select>
+      </div>
+      <button id="btn-sound-toggle" class="sound-toggle-btn" aria-label="Toggle Sound Effects" title="Mute/Unmute Audio">
+        <span id="sound-icon">🔊</span>
+      </button>
+    </section>
+
+    <!-- Scoreboard -->
+    <section class="scoreboard" aria-label="Scoreboard">
+      <div class="score-card score-card-x">
+        <span class="score-icon">🐶</span>
+        <span class="score-label">Puppy (X)</span>
+        <span id="score-x" class="score-val">0</span>
+      </div>
+      <div class="score-card score-card-ties">
+        <span class="score-icon">🤝</span>
+        <span class="score-label">Ties</span>
+        <span id="score-ties" class="score-val">0</span>
+      </div>
+      <div class="score-card score-card-o">
+        <span class="score-icon" id="score-o-icon">🤖</span>
+        <span class="score-label" id="score-o-label">Bot (O)</span>
+        <span id="score-o" class="score-val">0</span>
+      </div>
+    </section>
+
+    <!-- Turn / Game Outcome Announcement Banner -->
+    <div id="player-turn" class="turn-banner" role="status" aria-live="polite">
+      🐶 Puppy's Turn (X)
+    </div>
+
+    <!-- 3x3 Game Board Grid -->
+    <section class="board-wrapper" aria-label="Game Board">
+      <div id="game-board" class="game-board" role="grid">
+        <button class="cell" data-index="0" role="gridcell" aria-label="Cell 1, top-left"></button>
+        <button class="cell" data-index="1" role="gridcell" aria-label="Cell 2, top-middle"></button>
+        <button class="cell" data-index="2" role="gridcell" aria-label="Cell 3, top-right"></button>
+        <button class="cell" data-index="3" role="gridcell" aria-label="Cell 4, middle-left"></button>
+        <button class="cell" data-index="4" role="gridcell" aria-label="Cell 5, center"></button>
+        <button class="cell" data-index="5" role="gridcell" aria-label="Cell 6, middle-right"></button>
+        <button class="cell" data-index="6" role="gridcell" aria-label="Cell 7, bottom-left"></button>
+        <button class="cell" data-index="7" role="gridcell" aria-label="Cell 8, bottom-middle"></button>
+        <button class="cell" data-index="8" role="gridcell" aria-label="Cell 9, bottom-right"></button>
+      </div>
+    </section>
+
+    <!-- Action Buttons -->
+    <section class="actions-bar" aria-label="Game Actions">
+      <button id="btn-reset-round" class="btn btn-primary" title="Start a fresh match round">
+        <span>🔄</span> New Round
+      </button>
+      <button id="btn-reset-score" class="btn btn-secondary" title="Reset all scoreboard points">
+        <span>🗑️</span> Reset Scores
+      </button>
+    </section>
+
+    <footer class="game-footer">
+      <p>TicTacToe 4K • Built with ❤️ for kids &amp; families</p>
+    </footer>
+  </main>
+
+  <!-- Script Load Order strictly per DESIGN.md: relative paths without leading slash -->
+  <script src="game.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
