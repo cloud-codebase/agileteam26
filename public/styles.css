@@ -1,0 +1,725 @@
+/* ==========================================================================
+   SkiJumps2 - Deluxe Ski Jump (DSJ) / Adam Małysz Retro Broadcast CSS
+   Complies with DESIGN.md contracts and subpath-safe relative rules
+   ========================================================================== */
+
+:root {
+  --bg-primary: #0b1329;
+  --bg-secondary: #132247;
+  --bg-card: rgba(18, 30, 60, 0.88);
+  --border-card: #27407a;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent-blue: #38bdf8;
+  --accent-red: #ef4444;
+  --accent-gold: #facc15;
+  --accent-green: #10b981;
+  --font-display: 'Chakra Petch', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-primary);
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.12) 0%, transparent 75%),
+    linear-gradient(180deg, #070d1e 0%, #0d1935 50%, #060b18 100%);
+  color: var(--text-main);
+  font-family: var(--font-display);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* App Header & Retro TV Ticker */
+.app-header {
+  background: rgba(11, 19, 41, 0.95);
+  border-bottom: 2px solid var(--border-card);
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.brand-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.brand-badge {
+  background: linear-gradient(135deg, #dc2626 0%, #ffffff 50%, #dc2626 100%);
+  color: #000000;
+  font-weight: 900;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+.brand-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.brand-title span {
+  color: var(--accent-blue);
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+}
+
+.subhead {
+  font-size: 0.75rem;
+  color: var(--accent-gold);
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.btn-icon {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-card);
+  color: var(--text-main);
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-icon:hover {
+  background: #1e356e;
+  border-color: var(--accent-blue);
+}
+
+/* Main Container Layout */
+.app-container {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 1.25rem;
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.25rem;
+  flex: 1;
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .app-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Left Column: Canvas, Controls & HUD */
+.stage-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.canvas-viewport-wrapper {
+  position: relative;
+  background: #000000;
+  border: 2px solid var(--border-card);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 20px rgba(56, 189, 248, 0.15);
+  aspect-ratio: 16 / 10;
+}
+
+#game-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: crosshair;
+}
+
+/* Floating Broadcast Telemetry HUD on Canvas */
+.hud-telemetry {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.telemetry-card {
+  background: rgba(11, 19, 41, 0.88);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 8px;
+  padding: 0.5rem 0.85rem;
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.telemetry-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.telemetry-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+}
+
+.telemetry-value {
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.telemetry-value.accent-blue {
+  color: var(--accent-blue);
+}
+
+.telemetry-value.accent-gold {
+  color: var(--accent-gold);
+}
+
+/* Wind Radar Gauge */
+.wind-radar-box {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.wind-compass {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-blue);
+  background: rgba(14, 165, 233, 0.15);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#wind-arrow {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 16px solid var(--accent-gold);
+  transform-origin: 50% 90%;
+  transition: transform 0.3s ease-out;
+}
+
+/* Flight Action Guidance Banner */
+.flight-guidance-pill {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid var(--accent-gold);
+  color: var(--accent-gold);
+  padding: 0.45rem 1.25rem;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  animation: pulse-guidance 1.4s infinite alternate;
+}
+
+@keyframes pulse-guidance {
+  0% { transform: translateX(-50%) scale(1); opacity: 0.9; }
+  100% { transform: translateX(-50%) scale(1.05); opacity: 1; }
+}
+
+/* Control Cockpit & Trigger Buttons */
+.controls-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 10px;
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.action-buttons-row {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .action-buttons-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  border: 2px solid #60a5fa;
+  color: #ffffff;
+  padding: 0.85rem 1.2rem;
+  border-radius: 8px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+
+.btn-secondary {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-card);
+  color: var(--text-main);
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #1e356e;
+  border-color: var(--accent-blue);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-telemark {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  border: 2px solid #34d399;
+  color: #ffffff;
+}
+
+.btn-telemark:hover:not(:disabled) {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.keyboard-hints {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.key-badge {
+  background: #1e293b;
+  border: 1px solid #475569;
+  color: #f1f5f9;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+/* Selectors Configuration Bar */
+.config-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.config-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.config-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.select-retro {
+  background: #0f1c3f;
+  border: 1px solid var(--border-card);
+  color: #ffffff;
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.select-retro:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+}
+
+/* Right Sidebar: Tournament & Leaderboards */
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.panel-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.6rem;
+}
+
+.panel-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+/* Tournament Standings Widget */
+.tournament-standings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.standing-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(15, 28, 63, 0.6);
+  padding: 0.45rem 0.65rem;
+  border-radius: 6px;
+  border-left: 3px solid transparent;
+  font-size: 0.82rem;
+}
+
+.standing-row.active {
+  border-left-color: var(--accent-gold);
+  background: rgba(250, 204, 21, 0.1);
+}
+
+.standing-rank {
+  font-weight: 800;
+  color: var(--text-muted);
+  width: 22px;
+}
+
+.standing-name {
+  font-weight: 700;
+  color: #ffffff;
+  flex: 1;
+}
+
+.standing-points {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: var(--accent-blue);
+}
+
+/* Official FIS Judges Scorecard Display */
+#score-board {
+  background: #091228;
+  border: 1px solid var(--border-card);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.judges-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+}
+
+.judge-card {
+  background: #132247;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 0.35rem 0.15rem;
+  text-align: center;
+}
+
+.judge-country {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.judge-score {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--accent-gold);
+}
+
+.judge-card.dropped {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.score-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+/* Leaderboard List */
+#leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.leaderboard-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(15, 28, 63, 0.65);
+  padding: 0.45rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+.leaderboard-item:nth-child(1) {
+  border-left: 3px solid #facc15;
+}
+.leaderboard-item:nth-child(2) {
+  border-left: 3px solid #94a3b8;
+}
+.leaderboard-item:nth-child(3) {
+  border-left: 3px solid #b45309;
+}
+
+/* Modal Podium Ceremony */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 9, 20, 0.85);
+  backdrop-filter: blur(8px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 1rem;
+}
+
+.modal-overlay.open {
+  display: flex;
+  animation: modal-fade-in 0.25s ease-out;
+}
+
+@keyframes modal-fade-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.modal-card {
+  background: linear-gradient(180deg, #132247 0%, #091228 100%);
+  border: 2px solid var(--accent-gold);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px;
+  padding: 1.5rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(250, 204, 21, 0.25);
+  text-align: center;
+  position: relative;
+}
+
+.podium-header {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--accent-gold);
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.podium-sub {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.podium-display {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.podium-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.podium-pillar {
+  width: 100%;
+  border-radius: 6px 6px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #000000;
+}
+
+.step-gold .podium-pillar {
+  background: linear-gradient(180deg, #facc15 0%, #ca8a04 100%);
+  height: 90px;
+}
+.step-silver .podium-pillar {
+  background: linear-gradient(180deg, #e2e8f0 0%, #94a3b8 100%);
+  height: 65px;
+}
+.step-bronze .podium-pillar {
+  background: linear-gradient(180deg, #f97316 0%, #c2410c 100%);
+  height: 45px;
+}
+
+.podium-athlete-name {
+  font-size: 0.8rem;
+  font-weight: 800;
+  margin-bottom: 0.35rem;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.podium-athlete-points {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent-blue);
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 1000;
+}
+
+.toast {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid var(--accent-blue);
+  color: #ffffff;
+  padding: 0.65rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  animation: slide-in 0.25s ease-out;
+}
+
+@keyframes slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Footer / TV Credits */
+.app-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.75rem 1.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: auto;
+}
+
+.app-footer strong {
+  color: var(--accent-gold);
+}

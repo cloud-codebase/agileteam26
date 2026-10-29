@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkiJumps2 - Deluxe Ski Jump / Adam Małysz Edition</title>
+  <!-- Relative stylesheet link without leading slash for Cloud Run demo subpath support -->
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,600;0,700;0,800;1,700&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Retro Broadcast Top Bar -->
+  <header class="app-header">
+    <div class="brand-wrapper">
+      <div class="brand-badge">POLSKA 2001</div>
+      <div>
+        <h1 class="brand-title">SKI<span>JUMPS</span> 2</h1>
+        <div class="subhead">Deluxe Ski Jump &amp; Adam Małysz Tribute</div>
+      </div>
+    </div>
+    <div class="header-controls">
+      <button id="btn-sound-toggle" class="btn-icon" title="Toggle Sound / Audio Effects">
+        <span id="sound-icon">🔊</span> Sound ON
+      </button>
+      <button id="btn-fan-horn" class="btn-icon" title="Play Zakopane Stadium Trumpet Fanfare!">
+        🎺 Fan Horn
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Game Stage & Dashboard -->
+  <main class="app-container">
+    <!-- Center / Left: Canvas Viewport & Controls -->
+    <section class="stage-section">
+      <!-- 2D Canvas Mount with Floating Telemetry HUD -->
+      <div class="canvas-viewport-wrapper">
+        <canvas id="game-canvas" width="800" height="500"></canvas>
+
+        <!-- Live Telemetry Overlay -->
+        <div class="hud-telemetry">
+          <!-- Speed & Distance -->
+          <div class="telemetry-card">
+            <div class="telemetry-item">
+              <span class="telemetry-label">Speed</span>
+              <span id="speed-display" class="telemetry-value accent-blue">0.0 km/h</span>
+            </div>
+            <div class="telemetry-item">
+              <span class="telemetry-label">Distance</span>
+              <span id="distance-display" class="telemetry-value accent-gold">0.0 m</span>
+            </div>
+          </div>
+
+          <!-- Wind Meter with Dynamic Arrow -->
+          <div class="telemetry-card wind-radar-box">
+            <div class="wind-compass">
+              <div id="wind-arrow"></div>
+            </div>
+            <div class="telemetry-item">
+              <span class="telemetry-label">Wind</span>
+              <span id="wind-speed" class="telemetry-value">+1.2 m/s</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Guidance Banner -->
+        <div id="flight-guidance" class="flight-guidance-pill">
+          PRESS [JUMP / SPACE] TO START IN-RUN
+        </div>
+      </div>
+
+      <!-- Jump & Land Cockpit -->
+      <div class="controls-card">
+        <div class="action-buttons-row">
+          <button id="btn-jump" class="btn-primary">
+            🚀 <span>START / JUMP</span>
+          </button>
+          <button id="btn-land-telemark" class="btn-secondary btn-telemark" disabled>
+            ✨ TELEMARK LAND
+          </button>
+          <button id="btn-reset" class="btn-secondary">
+            🔄 RESET GATE
+          </button>
+        </div>
+
+        <div class="keyboard-hints">
+          <span><span class="key-badge">SPACE</span> / Click: Start &rarr; Takeoff &rarr; Safe Land</span>
+          <span><span class="key-badge">T</span> / Button: Telemark Landing</span>
+          <span><span class="key-badge">&uarr;</span> / <span class="key-badge">&darr;</span>: Flight Pitch Adjust</span>
+        </div>
+      </div>
+
+      <!-- Hill & Jumper Configuration Bar -->
+      <div class="config-bar">
+        <div class="config-group">
+          <label for="mode-select" class="config-label">Game Mode</label>
+          <select id="mode-select" class="select-retro">
+            <option value="practice">Solo Practice</option>
+            <option value="cup" selected>4-Hills Tournament (Zakopane &amp; Beyond)</option>
+            <option value="hotseat">Hotseat 2-Player Versus</option>
+          </select>
+        </div>
+
+        <div class="config-group">
+          <label for="hill-select" class="config-label">Select Hill</label>
+          <select id="hill-select" class="select-retro">
+            <option value="zakopane">Zakopane - Wielka Krokiew (K-120 / HS-134)</option>
+          </select>
+        </div>
+
+        <div class="config-group">
+          <label for="jumper-select" class="config-label">Select Jumper</label>
+          <select id="jumper-select" class="select-retro">
+            <option value="malysz">Adam Małysz (POL - 98 Skill)</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Sidebar: Scorecard, Tournament Standings & Leaderboard -->
+    <aside class="sidebar-section">
+      <!-- FIS Official Scoreboard Card -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">📋 FIS Judges Scorecard</div>
+          <span id="jump-status-badge" style="font-size: 0.75rem; color: #38bdf8; font-weight: 700;">READY</span>
+        </div>
+        <div id="score-board">
+          <div style="font-size: 0.72rem; color: #94a3b8; font-weight: 700;">STYLE JUDGES (5 FIS JUDGES)</div>
+          <div class="judges-row" id="judges-container">
+            <div class="judge-card"><div class="judge-country">AUT</div><div class="judge-score" id="j-score-0">--.-</div></div>
+            <div class="judge-card"><div class="judge-country">GER</div><div class="judge-score" id="j-score-1">--.-</div></div>
+            <div class="judge-card"><div class="judge-country">POL</div><div class="judge-score" id="j-score-2">--.-</div></div>
+            <div class="judge-card"><div class="judge-country">NOR</div><div class="judge-score" id="j-score-3">--.-</div></div>
+            <div class="judge-card"><div class="judge-country">FIN</div><div class="judge-score" id="j-score-4">--.-</div></div>
+          </div>
+          <div class="score-summary">
+            <span>Style: <strong id="style-points-val" style="color: #facc15;">0.0</strong> pts</span>
+            <span>Total: <strong id="total-points-val" style="color: #38bdf8; font-size: 1.1rem;">0.0</strong> pts</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tournament / Hotseat Round Standings -->
+      <div class="panel-card" id="tournament-panel">
+        <div class="panel-header">
+          <div class="panel-title">🏆 Tournament Standings</div>
+          <span id="tournament-round-info" style="font-size: 0.75rem; color: #facc15; font-weight: 700;">Round 1 / 4</span>
+        </div>
+        <div class="tournament-standings-list" id="tournament-standings">
+          <!-- Rendered dynamically by app.js -->
+        </div>
+      </div>
+
+      <!-- Global / Hill Leaderboard -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">🥇 Hill High Scores</div>
+          <button id="btn-refresh-lb" class="btn-icon" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">↻ Sync</button>
+        </div>
+        <div id="leaderboard-list">
+          <div style="text-align: center; color: #94a3b8; padding: 1rem; font-size: 0.8rem;">Loading records...</div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Modal Podium Ceremony -->
+  <div id="modal-podium" class="modal-overlay">
+    <div class="modal-card">
+      <div class="podium-header">🏆 Podium Ceremony! 🏆</div>
+      <div class="podium-sub" id="podium-subtitle">Zakopane Grand Prix Champions</div>
+
+      <div class="podium-display">
+        <!-- 2nd Place Silver -->
+        <div class="podium-step step-silver">
+          <div class="podium-athlete-name" id="podium-silver-name">Hannawald</div>
+          <div class="podium-athlete-points" id="podium-silver-points">278.4 pts</div>
+          <div class="podium-pillar">2</div>
+        </div>
+        <!-- 1st Place Gold -->
+        <div class="podium-step step-gold">
+          <div class="podium-athlete-name" id="podium-gold-name">Adam Małysz</div>
+          <div class="podium-athlete-points" id="podium-gold-points">294.2 pts</div>
+          <div class="podium-pillar">1</div>
+        </div>
+        <!-- 3rd Place Bronze -->
+        <div class="podium-step step-bronze">
+          <div class="podium-athlete-name" id="podium-bronze-name">Ahonen</div>
+          <div class="podium-athlete-points" id="podium-bronze-points">271.0 pts</div>
+          <div class="podium-pillar">3</div>
+        </div>
+      </div>
+
+      <button id="btn-close-podium" class="btn-primary" style="margin: 0 auto; min-width: 180px;">
+        CONTINUE
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Notification Mount -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- TV Broadcast Footer -->
+  <footer class="app-footer">
+    Deluxe Ski Jump tribute engine &bull; <strong>Adam Małysz / Zakopane Edition</strong> &bull; Pure HTML5 Canvas 2D &amp; Web Audio &bull; FIS Scoring Rules
+  </footer>
+
+  <!-- Scripts in strict DESIGN.md order without leading slash -->
+  <script src="js/physics.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
