@@ -31,6 +31,7 @@
       windArrow: document.getElementById('windArrow'),
       hudPhase: document.getElementById('hudPhase'),
       hudHillPoints: document.getElementById('hudHillPoints'),
+      hudToBeat: document.getElementById('hudToBeat'),
       hudMessageStrip: document.getElementById('hudMessageStrip'),
       hudMessageText: document.getElementById('hudMessageText'),
       jumperName: document.getElementById('jumperName'),
@@ -82,6 +83,7 @@
    * @param {string} [stats.hillName] - Name of active hill
    * @param {number} [stats.kPoint] - K-point
    * @param {number} [stats.hsPoint] - Hill size
+   * @param {number} [stats.toBeatDistance] - Leader distance to beat in meters
    * @param {string} [stats.message] - Optional broadcast alert text
    */
   function updateHUD(stats) {
@@ -126,6 +128,11 @@
 
     if (stats.kPoint && stats.hsPoint && elements.hudHillPoints) {
       elements.hudHillPoints.textContent = `K:${stats.kPoint} / HS:${stats.hsPoint}`;
+    }
+
+    if (elements.hudToBeat) {
+      const toBeat = stats.toBeatDistance || (window.SkiGame && window.SkiGame.leaderDistance) || 134.0;
+      elements.hudToBeat.textContent = toBeat.toFixed(1) + ' m';
     }
 
     if (elements.hudMessageStrip && elements.hudMessageText) {
@@ -304,12 +311,11 @@
       })
       .catch(err => {
         console.warn('Leaderboard fetch failed, using fallback:', err);
-        // Fallback seed entries
         renderLeaderboard([
-          { rank: 1, name: 'Adam Małysz', country: 'POL', hill: 'Zakopane', distance1: 138.5, distance2: 139.0, totalPoints: 285.5 },
-          { rank: 2, name: 'Sven Hannawald', country: 'GER', hill: 'Zakopane', distance1: 135.0, distance2: 136.5, totalPoints: 278.0 },
-          { rank: 3, name: 'Martin Schmitt', country: 'GER', hill: 'Zakopane', distance1: 134.0, distance2: 134.5, totalPoints: 272.5 },
-          { rank: 4, name: 'Matti Hautamäki', country: 'FIN', hill: 'Zakopane', distance1: 132.5, distance2: 133.0, totalPoints: 268.0 }
+          { rank: 1, name: 'Adam Małysz', country: 'POL', hill: 'Wielka Krokiew (Zakopane)', distance1: 138.5, distance2: 139.0, totalPoints: 285.5 },
+          { rank: 2, name: 'Sven Hannawald', country: 'GER', hill: 'Wielka Krokiew (Zakopane)', distance1: 135.0, distance2: 136.5, totalPoints: 278.0 },
+          { rank: 3, name: 'Martin Schmitt', country: 'GER', hill: 'Wielka Krokiew (Zakopane)', distance1: 134.0, distance2: 134.5, totalPoints: 272.5 },
+          { rank: 4, name: 'Janne Ahonen', country: 'FIN', hill: 'Salpausselkä (Lahti)', distance1: 133.0, distance2: 134.0, totalPoints: 269.5 }
         ]);
       });
   }
@@ -320,12 +326,15 @@
   function submitScore() {
     if (!window.SkiUI.lastResult) return;
     const name = (elements.inputPlayerName && elements.inputPlayerName.value.trim()) || 'Adam Małysz';
-    const activeHill = (elements.hillSelect && elements.hillSelect.value) || 'zakopane';
+    let activeHillName = 'Wielka Krokiew (Zakopane)';
+    if (elements.hillSelect && elements.hillSelect.options && elements.hillSelect.selectedIndex >= 0) {
+      activeHillName = elements.hillSelect.options[elements.hillSelect.selectedIndex].text.split(' K-')[0] || elements.hillSelect.value;
+    }
 
     const payload = {
       name: name,
       country: 'POL',
-      hill: activeHill,
+      hill: activeHillName,
       distance1: window.SkiUI.lastResult.distance || 130.0,
       distance2: window.SkiUI.lastResult.distance2 || (window.SkiUI.lastResult.distance || 130.0),
       totalPoints: window.SkiUI.lastResult.totalPoints || 130.0
@@ -367,10 +376,11 @@
       .then(hills => {
         if (Array.isArray(hills) && elements.hillSelect) {
           elements.hillSelect.innerHTML = '';
-          hills.forEach(hill => {
+          hills.forEach((hill, idx) => {
             const opt = document.createElement('option');
             opt.value = hill.id;
             opt.textContent = `${hill.name} K-${hill.kPoint} HS-${hill.hsPoint}`;
+            if (idx === 0) opt.selected = true;
             elements.hillSelect.appendChild(opt);
           });
         }
@@ -445,7 +455,9 @@
     if (elements.btnNextRound) {
       elements.btnNextRound.addEventListener('click', () => {
         elements.resultsModal.classList.add('hidden');
-        if (window.SkiGame && typeof window.SkiGame.startJump === 'function') {
+        if (window.SkiGame && typeof window.SkiGame.nextRound === 'function') {
+          window.SkiGame.nextRound();
+        } else if (window.SkiGame && typeof window.SkiGame.startJump === 'function') {
           window.SkiGame.startJump();
         }
       });
@@ -470,7 +482,9 @@
     if (elements.hillSelect) {
       elements.hillSelect.addEventListener('change', (e) => {
         const hillId = e.target.value;
-        if (window.SkiPhysics && typeof window.SkiPhysics.initHill === 'function') {
+        if (window.SkiGame && typeof window.SkiGame.setHill === 'function') {
+          window.SkiGame.setHill(hillId);
+        } else if (window.SkiPhysics && typeof window.SkiPhysics.initHill === 'function') {
           window.SkiPhysics.initHill({ id: hillId });
         }
       });

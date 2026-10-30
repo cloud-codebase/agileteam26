@@ -11,6 +11,7 @@
   --tvp-white: #ffffff;
   --tvp-gray: #d4d8e0;
   --tvp-green: #11a842;
+  --tvp-neon-green: #00ff66;
   --crt-glow: rgba(220, 240, 255, 0.12);
   --font-pixel: 'Courier New', Courier, monospace, monospace;
   --font-broadcast: 'Trebuchet MS', 'Arial Black', Impact, sans-serif;
@@ -436,6 +437,11 @@ body {
   font-weight: 900;
   color: #fff;
   text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
+.to-beat-value {
+  color: var(--tvp-neon-green);
+  text-shadow: 0 0 8px rgba(0, 255, 102, 0.7);
 }
 
 .telem-divider {

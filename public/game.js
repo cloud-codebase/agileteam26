@@ -3,11 +3,15 @@
  * Implements:
  * - 60 FPS requestAnimationFrame canvas rendering loop
  * - Dynamic camera tracking following ski jumper down hill
- * - Procedural ski jumping hill rendering (tower, in-run ramp, snow hill profile, distance markers: K-point red line, HS-point green line)
- * - Animated ski jumper character (in-run crouch, V-style aerodynamic flight, telemark landing pose, crash ragdoll/tumble)
- * - Animated spectators, Polish flags waving in wind, pine trees, falling snow particles
- * - Keyboard (Space, ArrowUp, ArrowDown, W, S, T), Mouse (clicks / drag), and Touch controls
- * - Two-round tournament system with score aggregation and relative fetch calls to backend ('api/hills', 'api/leaderboard')
+ * - Procedural ski jumping hill rendering with real-world profiles:
+ *   - Zakopane K120/HS134 (Wielka Krokiew)
+ *   - Planica K200/HS240 (Letalnica bratov Gorišek - giant ski flying hill)
+ *   - Lahti K116/HS130 (Salpausselkä - technical Finnish hill)
+ * - Broadcast distance markers (K-point red line, HS-point green line)
+ * - TVP Green to-beat line on snow (Lider / leader's required distance line)
+ * - Real-time flight telemetry sync with window.SkiUI.updateHUD
+ * - Tournament round management & Leaderboard API integration (GET/POST api/leaderboard)
+ * - Keyboard (Space, ArrowUp, ArrowDown, W, S, T, R), Mouse (clicks / drag), and Touch controls
  */
 (function() {
   'use strict';
@@ -19,13 +23,14 @@
       this.isRunning = false;
       this.animationFrameId = null;
 
-      // Tournament state
+      // Tournament state (DESIGN.md window.SkiGame contract)
       this.tournamentRound = 1;
       this.roundScores = [];
       this.currentHillId = 'zakopane';
       this.hills = [];
       this.jumperName = 'Adam Małysz';
       this.jumperCountry = 'POL';
+      this.leaderDistance = 134.0; // Dynamic leader distance to beat (green line)
 
       // Simulation physics state
       this.state = this.getInitialState();
@@ -99,8 +104,8 @@
     initSpectators() {
       this.spectators = [];
       // Generate spectators clustered between takeoff and HS
-      for (let i = 0; i < 40; i++) {
-        const xOffset = 290 + i * 15 + (Math.random() * 8 - 4);
+      for (let i = 0; i < 48; i++) {
+        const xOffset = 290 + i * 18 + (Math.random() * 8 - 4);
         const hasFlag = i % 4 === 0; // Every 4th spectator holds a Polish flag
         const coatColor = ['#d32f2f', '#ffffff', '#1976d2', '#388e3c', '#fbc02d', '#424242'][i % 6];
         this.spectators.push({
@@ -142,6 +147,7 @@
 
       // Fetch hills & high scores using strictly relative paths (no leading slash)
       this.fetchHills();
+      this.fetchLeaderboardLeader();
 
       // Set initial wind
       this.randomizeWind();
@@ -159,11 +165,11 @@
         .then(hills => {
           if (Array.isArray(hills) && hills.length > 0) {
             this.hills = hills;
-            this.setHill(hills[0].id || 'zakopane');
+            this.setHill(this.currentHillId || hills[0].id || 'zakopane');
           }
         })
         .catch(err => {
-          console.warn('Could not fetch api/hills (offline or static mode), using fallback hill:', err);
+          console.warn('Could not fetch api/hills, using fallback hill:', err);
           if (window.SkiPhysics) {
             window.SkiPhysics.initHill({
               id: 'zakopane',
@@ -176,12 +182,54 @@
         });
     }
 
+    fetchLeaderboardLeader() {
+      fetch('api/leaderboard')
+        .then(res => res.json())
+        .then(board => {
+          if (Array.isArray(board) && board.length > 0) {
+            const top = board[0];
+            const maxD = Math.max(top.distance1 || 0, top.distance2 || 0);
+            if (maxD > 50) {
+              this.leaderDistance = maxD;
+            }
+          }
+          this.updateHUD();
+        })
+        .catch(err => console.warn('Could not fetch initial leaderboard leader:', err));
+    }
+
     setHill(hillId) {
       this.currentHillId = hillId;
       const found = this.hills.find(h => h.id === hillId);
       if (found && window.SkiPhysics) {
         window.SkiPhysics.initHill(found);
+      } else if (window.SkiPhysics) {
+        // Fallback real-world profiles matching DESIGN.md
+        const profiles = {
+          zakopane: { id: 'zakopane', name: 'Wielka Krokiew (Zakopane)', kPoint: 120, hsPoint: 134, record: { distance: 140.5, holder: 'Adam Małysz', year: 2002 } },
+          planica: { id: 'planica', name: 'Letalnica bratov Gorišek (Planica)', kPoint: 200, hsPoint: 240, record: { distance: 252.0, holder: 'Ryoyu Kobayashi', year: 2019 } },
+          lahti: { id: 'lahti', name: 'Salpausselkä (Lahti)', kPoint: 116, hsPoint: 130, record: { distance: 138.0, holder: 'Andreas Widhölzl', year: 2006 } },
+          oberstdorf: { id: 'oberstdorf', name: 'Heini-Klopfer (Oberstdorf)', kPoint: 200, hsPoint: 235, record: { distance: 238.0, holder: 'Domen Prevc', year: 2017 } }
+        };
+        if (profiles[hillId]) {
+          window.SkiPhysics.initHill(profiles[hillId]);
+        }
       }
+
+      // Update hill-specific leader distance
+      const hillConfig = (window.SkiPhysics && window.SkiPhysics.currentHill) || { kPoint: 120, hsPoint: 134 };
+      if (hillConfig.kPoint >= 180) {
+        this.leaderDistance = Math.round((hillConfig.kPoint + 28) * 10) / 10; // e.g. ~228m on Planica
+      } else {
+        this.leaderDistance = Math.round((hillConfig.kPoint + 11.5) * 10) / 10; // e.g. ~131.5m on Zakopane
+      }
+
+      // Sync jumper record in top-left HUD
+      const jumperRecord = document.getElementById('jumperRecord');
+      if (jumperRecord && hillConfig.record) {
+        jumperRecord.textContent = `REKORD: ${hillConfig.record.distance}m (${hillConfig.record.holder})`;
+      }
+
       this.reset();
     }
 
@@ -191,7 +239,6 @@
       const angle = Math.floor(Math.random() * 360);
       this.wind = { speed, angle };
 
-      // Update HUD if UI module is present
       this.updateHUD();
     }
 
@@ -207,10 +254,8 @@
           window.SkiAudio.playInRunWhoosh(50);
         }
       } else if (this.state.phase === 'IN_RUN') {
-        // Space / Click pressed while in-run triggers takeoff jump!
         this.input.jumpPressed = true;
       } else if (this.state.phase === 'FLIGHT') {
-        // Space / Click pressed while in flight triggers landing preparation
         this.input.landingPressed = true;
       }
     }
@@ -233,7 +278,6 @@
         this.tournamentRound = 2;
         this.reset();
       } else {
-        // Tournament finished, reset to round 1
         this.tournamentRound = 1;
         this.roundScores = [];
         this.reset();
@@ -287,7 +331,6 @@
       } else if (this.state.phase === 'IN_RUN') {
         this.input.jumpPressed = true;
       } else if (this.state.phase === 'FLIGHT') {
-        // Upper half of canvas = pitch up, lower half = pitch down / landing
         const rect = this.canvas.getBoundingClientRect();
         const clientY = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
         const relativeY = clientY - rect.top;
@@ -398,15 +441,16 @@
       state.scoreDetails = score;
       this.roundScores.push(score);
 
-      // Play fanfare if distance exceeded K-point safely
+      // Fanfare if jumper beats the green line or exceeds K-point safely
       const kPoint = (window.SkiPhysics.currentHill && window.SkiPhysics.currentHill.kPoint) || 120;
-      if (state.distance >= kPoint && !state.crashed && window.SkiAudio) {
+      if ((state.distance >= this.leaderDistance || state.distance >= kPoint) && !state.crashed && window.SkiAudio) {
         window.SkiAudio.playFanfare();
       }
 
       // Trigger UI modal if window.SkiUI is available
       if (window.SkiUI && typeof window.SkiUI.showJudgeScores === 'function') {
         window.SkiUI.showJudgeScores({
+          jumperName: this.jumperName,
           round: this.tournamentRound,
           distance: score.distance,
           landingStyle: state.landingStyle,
@@ -414,8 +458,8 @@
           judgeScores: score.judgeScores,
           totalStylePoints: score.totalStylePoints,
           stylePoints: score.totalStylePoints,
-          windCompensation: score.windCompensation,
           windPoints: score.windCompensation,
+          windCompensation: score.windCompensation,
           totalPoints: score.totalPoints,
           roundScores: this.roundScores
         });
@@ -433,10 +477,12 @@
       const totalPoints = (this.roundScores[0] ? this.roundScores[0].totalPoints : 0) +
                           (this.roundScores[1] ? this.roundScores[1].totalPoints : 0);
 
+      const hillName = (window.SkiPhysics && window.SkiPhysics.currentHill && window.SkiPhysics.currentHill.name) || 'Wielka Krokiew (Zakopane)';
+
       const payload = {
         name: this.jumperName,
         country: this.jumperCountry,
-        hill: (window.SkiPhysics && window.SkiPhysics.currentHill.name) || 'Zakopane',
+        hill: hillName,
         distance1: d1,
         distance2: d2,
         totalPoints: Math.round(totalPoints * 10) / 10
@@ -458,29 +504,39 @@
     }
 
     updateHUD() {
+      const speedKmh = Math.round((this.state.vx * 3.6 / 3.2) * 10) / 10;
+      const hill = (window.SkiPhysics && window.SkiPhysics.currentHill) || { kPoint: 120, hsPoint: 134, name: 'Zakopane' };
+      const currentDist = this.state.distance || (window.SkiPhysics ? window.SkiPhysics.xToMeters(this.state.x) : 0);
+
       if (window.SkiUI && typeof window.SkiUI.updateHUD === 'function') {
-        const speedKmh = Math.round((this.state.vx * 3.6 / 3.2) * 10) / 10;
         window.SkiUI.updateHUD({
           speed: this.state.phase === 'READY' ? 0 : speedKmh,
-          distance: this.state.distance || (window.SkiPhysics ? window.SkiPhysics.xToMeters(this.state.x) : 0),
+          distance: currentDist,
           windSpeed: this.wind.speed,
           windAngle: this.wind.angle,
           phase: this.state.phase,
+          kPoint: hill.kPoint,
+          hsPoint: hill.hsPoint,
+          toBeatDistance: this.leaderDistance,
           round: this.tournamentRound
         });
       } else {
-        // Direct DOM fallbacks matching DESIGN.md
+        // Direct DOM fallback
         const hudSpeed = document.getElementById('hudSpeed');
         const hudDist = document.getElementById('hudDistance');
         const hudWindSpeed = document.getElementById('hudWindSpeed');
         const hudWindAngle = document.getElementById('hudWindAngle');
         const hudPhase = document.getElementById('hudPhase');
+        const hudPoints = document.getElementById('hudHillPoints');
+        const hudToBeat = document.getElementById('hudToBeat');
 
         if (hudSpeed) hudSpeed.textContent = (this.state.phase === 'READY' ? 0 : Math.round(this.state.vx * 3.6 / 3.2)) + ' km/h';
-        if (hudDist) hudDist.textContent = (this.state.distance || 0).toFixed(1) + ' m';
+        if (hudDist) hudDist.textContent = (currentDist || 0).toFixed(1) + ' m';
         if (hudWindSpeed) hudWindSpeed.textContent = (this.wind.speed > 0 ? '+' : '') + this.wind.speed.toFixed(1) + ' m/s';
         if (hudWindAngle) hudWindAngle.textContent = this.wind.angle + '°';
         if (hudPhase) hudPhase.textContent = this.state.phase;
+        if (hudPoints) hudPoints.textContent = `K:${hill.kPoint} / HS:${hill.hsPoint}`;
+        if (hudToBeat) hudToBeat.textContent = this.leaderDistance.toFixed(1) + ' m';
       }
     }
 
@@ -503,7 +559,7 @@
       ctx.save();
       ctx.translate(-this.camera.x, -this.camera.y);
 
-      // 2. Distant Tatra Mountains Silhouette
+      // 2. Distant Mountains Silhouette
       this.renderMountains(ctx);
 
       // 3. Pine Trees on Hillside
@@ -512,7 +568,7 @@
       // 4. In-Run Ramp Tower & Scaffold
       this.renderInRunTower(ctx);
 
-      // 5. Snow Hill & Distance Marking Lines (K-point, HS-point)
+      // 5. Snow Hill & Distance Marking Lines (K-point, HS-point, and Neon Green To-Beat Line)
       this.renderHillSlope(ctx);
 
       // 6. Cheering Spectators & Polish Red-White Flags
@@ -539,9 +595,9 @@
       ctx.lineTo(440, 130);
       ctx.lineTo(680, 260);
       ctx.lineTo(950, 140);
-      ctx.lineTo(1300, 340);
-      ctx.lineTo(1300, 600);
-      ctx.lineTo(-200, 600);
+      ctx.lineTo(1400, 340);
+      ctx.lineTo(1400, 700);
+      ctx.lineTo(-200, 700);
       ctx.closePath();
       ctx.fill();
 
@@ -568,7 +624,10 @@
       if (!window.SkiPhysics) return;
       ctx.fillStyle = '#1b382b';
       // Procedural evergreen trees behind the hill
-      for (let x = 180; x < 950; x += 38) {
+      const hill = window.SkiPhysics.currentHill || { kPoint: 120 };
+      const maxTreeX = hill.kPoint >= 180 ? 1200 : 980;
+
+      for (let x = 180; x < maxTreeX; x += 38) {
         const groundY = window.SkiPhysics.getHillY(x);
         const treeH = 32 + (x % 7) * 3;
         ctx.beginPath();
@@ -626,18 +685,19 @@
       const hill = window.SkiPhysics.currentHill || { kPoint: 120, hsPoint: 134 };
       const kX = window.SkiPhysics.metersToX(hill.kPoint || 120);
       const hsX = window.SkiPhysics.metersToX(hill.hsPoint || 134);
+      const endSlopeX = Math.max(1200, hsX + 350);
 
       // Thick pure snow slope
       ctx.beginPath();
       ctx.moveTo(tableX, window.SkiPhysics.getHillY(tableX) + 20);
-      for (let x = tableX; x <= 1100; x += 12) {
+      for (let x = tableX; x <= endSlopeX; x += 12) {
         ctx.lineTo(x, window.SkiPhysics.getHillY(x));
       }
-      ctx.lineTo(1100, 750);
-      ctx.lineTo(tableX, 750);
+      ctx.lineTo(endSlopeX, 850);
+      ctx.lineTo(tableX, 850);
       ctx.closePath();
 
-      const snowGrad = ctx.createLinearGradient(0, 200, 0, 600);
+      const snowGrad = ctx.createLinearGradient(0, 200, 0, 700);
       snowGrad.addColorStop(0, '#ffffff');
       snowGrad.addColorStop(0.6, '#e0f2fe');
       snowGrad.addColorStop(1, '#90a4ae');
@@ -649,36 +709,70 @@
       ctx.strokeStyle = '#b0bec5';
       ctx.stroke();
 
-      // Red K-Point Line across the hill
+      // 1. Red K-Point Line across the hill
       const ky = window.SkiPhysics.getHillY(kX);
       ctx.strokeStyle = '#d32f2f'; // Polish Broadcast Red
       ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.moveTo(kX - 12, ky - 8);
-      ctx.lineTo(kX + 12, ky + 8);
+      ctx.moveTo(kX - 14, ky - 9);
+      ctx.lineTo(kX + 14, ky + 9);
       ctx.stroke();
 
       ctx.fillStyle = '#d32f2f';
       ctx.font = 'bold 12px "Courier New", monospace';
       ctx.fillText(`K-${hill.kPoint}`, kX - 18, ky - 14);
 
-      // Green HS-Point Line
+      // 2. Green HS-Point Line (Hill Size)
       const hsy = window.SkiPhysics.getHillY(hsX);
       ctx.strokeStyle = '#2e7d32'; // Forest Green
       ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.moveTo(hsX - 12, hsy - 8);
-      ctx.lineTo(hsX + 12, hsy + 8);
+      ctx.moveTo(hsX - 14, hsy - 9);
+      ctx.lineTo(hsX + 14, hsy + 9);
       ctx.stroke();
 
       ctx.fillStyle = '#2e7d32';
-      ctx.fillText(`HS-${hill.hsPoint}`, hsX - 22, hsy - 14);
+      ctx.font = 'bold 12px "Courier New", monospace';
+      ctx.fillText(`HS-${hill.hsPoint}`, hsX - 24, hsy - 14);
+
+      // 3. NEON GREEN TO-BEAT LINE (TVP Leader line projected directly onto the snow)
+      const toBeatX = window.SkiPhysics.metersToX(this.leaderDistance);
+      const toBeatY = window.SkiPhysics.getHillY(toBeatX);
+
+      // Glowing neon aura
+      ctx.save();
+      ctx.shadowColor = '#00ff66';
+      ctx.shadowBlur = 10;
+      ctx.strokeStyle = '#00ff66';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(toBeatX - 22, toBeatY - 14);
+      ctx.lineTo(toBeatX + 22, toBeatY + 14);
+      ctx.stroke();
+
+      // Bright white core
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(toBeatX - 20, toBeatY - 13);
+      ctx.lineTo(toBeatX + 20, toBeatY + 13);
+      ctx.stroke();
+
+      // Leader Distance Badge Tag
+      ctx.fillStyle = '#00ff66';
+      ctx.font = '900 12px "Courier New", monospace';
+      ctx.fillText(`LIDER: ${this.leaderDistance.toFixed(1)}m`, toBeatX - 35, toBeatY - 18);
+      ctx.restore();
 
       // Distance markers every 10 meters (80, 90, 100, 110, etc.)
       ctx.fillStyle = '#546e7a';
       ctx.font = '10px "Courier New", monospace';
-      for (let m = 70; m <= 140; m += 10) {
-        if (m === hill.kPoint || m === hill.hsPoint) continue;
+      const stepDist = hill.kPoint >= 180 ? 20 : 10;
+      const startDist = hill.kPoint >= 180 ? 140 : 70;
+      const maxDist = hill.kPoint >= 180 ? 260 : 150;
+
+      for (let m = startDist; m <= maxDist; m += stepDist) {
+        if (Math.abs(m - hill.kPoint) < 3 || Math.abs(m - hill.hsPoint) < 3) continue;
         const mx = window.SkiPhysics.metersToX(m);
         const my = window.SkiPhysics.getHillY(mx);
         ctx.strokeStyle = '#78909c';
@@ -742,11 +836,9 @@
       ctx.translate(x, y);
 
       if (state.phase === 'CRASHED') {
-        // Tumble ragdoll rotation
         ctx.rotate((state.tumbleAngle * Math.PI) / 180);
         this.drawJumperRagdoll(ctx);
       } else {
-        // Normal pitch rotation (in-run, flight, telemark)
         const rad = (state.pitch * Math.PI) / 180;
         ctx.rotate(rad);
         if (state.phase === 'IN_RUN' || state.phase === 'READY') {
@@ -754,7 +846,6 @@
         } else if (state.phase === 'FLIGHT') {
           this.drawJumperFlight(ctx);
         } else {
-          // LANDED or SCORED
           if (state.landingStyle === 'TELEMARK') {
             this.drawJumperTelemark(ctx);
           } else {
@@ -943,7 +1034,7 @@
     }
   }
 
-  // Instantiate and expose globally
+  // Instantiate and expose globally matching DESIGN.md
   window.SkiGame = new SkiGameEngine();
 
   // Auto initialize on DOM ready
