@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jumps5k - Retro Ski Jumping Championship (DSJ / TVP 2000s Style)</title>
+  <!-- Relative stylesheet link - strictly no leading slash for subpath safety -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="crt-screen">
+  <div class="tvp-overlay"></div>
+  <div class="scanlines"></div>
+
+  <header class="broadcast-header">
+    <div class="broadcast-banner">
+      <div class="tvp-logo">
+        <span class="tvp-box">TVP</span>
+        <span class="sport-badge">SPORT 1</span>
+        <span class="live-dot">● NA ŻYWO</span>
+      </div>
+      <div class="tournament-title">
+        <h1>PUCHAR ŚWIATA W SKOKACH NARCIARSKICH</h1>
+        <span class="sub-title">GRAND PRIX 2001/2002 • RETRO SIMULATOR</span>
+      </div>
+      <div class="broadcast-actions">
+        <button id="btnOpenLeaderboard" class="retro-btn btn-gold">🏆 TABELA WYNIKÓW</button>
+        <button id="btnOpenHelp" class="retro-btn">❓ INSTRUKCJA</button>
+      </div>
+    </div>
+
+    <!-- Hill selection and control bar -->
+    <div class="control-ribbon">
+      <div class="ribbon-group">
+        <label for="hillSelect">SKOCZNIA:</label>
+        <select id="hillSelect" class="retro-select">
+          <option value="zakopane" selected>Wielka Krokiew (Zakopane) K-120 HS-134</option>
+          <option value="wisla">Malinka (Wisła) K-120 HS-134</option>
+          <option value="oberstdorf">Heini-Klopfer (Oberstdorf) K-200 HS-235</option>
+          <option value="planica">Letalnica (Planica) K-200 HS-240</option>
+        </select>
+      </div>
+
+      <div class="ribbon-group">
+        <label for="gateSelect">BELKA (GATE):</label>
+        <select id="gateSelect" class="retro-select">
+          <option value="12">Belka 12 (Niska)</option>
+          <option value="15" selected>Belka 15 (Standard)</option>
+          <option value="18">Belka 18 (Wysoka)</option>
+        </select>
+      </div>
+
+      <div class="ribbon-group status-group">
+        <span class="label">FAZA:</span>
+        <span id="hudPhase" class="badge-phase">ROZBIEG</span>
+      </div>
+
+      <div class="ribbon-group jump-action-group">
+        <button id="btnStartJump" class="retro-btn btn-green">🎿 START (SPACJA)</button>
+        <button id="btnResetJump" class="retro-btn btn-danger">↺ RESET (R)</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="game-wrapper">
+    <div class="canvas-container">
+      <canvas id="gameCanvas" width="800" height="450"></canvas>
+
+      <!-- TVP Style Broadcast HUD Overlay on top of canvas -->
+      <div class="broadcast-hud">
+        <!-- Top Left: Current Jumper Graphic -->
+        <div class="jumper-card">
+          <div class="jumper-flag">🇵🇱</div>
+          <div class="jumper-info">
+            <span class="jumper-bib">NR 45</span>
+            <span id="jumperName" class="jumper-name">ADAM MAŁYSZ (POL)</span>
+            <span id="jumperRecord" class="jumper-record">REKORD: 140.5m</span>
+          </div>
+        </div>
+
+        <!-- Top Right: Wind Gauge & Meter -->
+        <div class="wind-gauge-panel">
+          <div class="wind-label">WIATR (WIND)</div>
+          <div class="wind-content">
+            <div id="windArrow" class="wind-compass-arrow" title="Kierunek wiatru">➤</div>
+            <div class="wind-values">
+              <span id="hudWindSpeed" class="wind-speed">+1.4 m/s</span>
+              <span id="hudWindAngle" class="wind-desc">POD NARTY (HEAD)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Left: Speed and Height In-Run Telemeter -->
+        <div class="telemetry-bar">
+          <div class="telem-item">
+            <span class="telem-label">PRĘDKOŚĆ</span>
+            <span id="hudSpeed" class="telem-value">0.0 km/h</span>
+          </div>
+          <div class="telem-divider"></div>
+          <div class="telem-item">
+            <span class="telem-label">DYSTANS</span>
+            <span id="hudDistance" class="telem-value">0.0 m</span>
+          </div>
+          <div class="telem-divider"></div>
+          <div class="telem-item">
+            <span class="telem-label">PUNKTY K / HS</span>
+            <span id="hudHillPoints" class="telem-value">K:120 / HS:134</span>
+          </div>
+        </div>
+
+        <!-- Bottom Center: Broadcast Alert Strip -->
+        <div id="hudMessageStrip" class="hud-message-strip hidden">
+          <span id="hudMessageText">ZIELONE ŚWIATŁO - SKACZ!</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Keyboard Reference Ribbon -->
+    <div class="keyboard-legend">
+      <span>⌨️ <strong>STEROWANIE:</strong></span>
+      <span><kbd>SPACJA</kbd> / <kbd>LPM</kbd> : Rozbieg / Wybicie / Lądowanie</span>
+      <span><kbd>▲</kbd> <kbd>▼</kbd> / <kbd>Ruch Myszą</kbd> : Kąt nachylenia ciała (Pitch)</span>
+      <span><kbd>T</kbd> : Lądowanie Telemarkiem</span>
+      <span><kbd>R</kbd> : Reset skoku</span>
+    </div>
+  </main>
+
+  <!-- MODAL: Results & 5-Judge Scores Breakdown -->
+  <div id="resultsModal" class="retro-modal hidden">
+    <div class="modal-dialog">
+      <div class="modal-header tvp-header">
+        <h2>OFICJALNE WYNIKI SKOKU / OFFICIAL RESULT</h2>
+        <span class="modal-badge">TVP SPORT DATA</span>
+      </div>
+      <div class="modal-body">
+        <div class="results-summary-card">
+          <div class="res-col">
+            <span class="res-label">SKOCZEK</span>
+            <span id="resJumperName" class="res-highlight">Adam Małysz (POL)</span>
+          </div>
+          <div class="res-col">
+            <span class="res-label">ODLEGŁOŚĆ</span>
+            <span id="resDistanceDisplay" class="res-distance">132.5 m</span>
+            <span id="resDistPts" class="res-sub">(82.5 pkt za odl.)</span>
+          </div>
+          <div class="res-col">
+            <span class="res-label">KOMPENSACJA WIATRU</span>
+            <span id="resWindPts" class="res-wind">-2.4 pkt</span>
+          </div>
+        </div>
+
+        <!-- 5 Judges Breakdown Table -->
+        <div class="judges-section">
+          <h3>OCENY SĘDZIÓW ZA STYL (5 JUDGES)</h3>
+          <div id="judgeScoresList" class="judges-grid">
+            <!-- Rendered dynamically by SkiUI with flags & eliminated high/low -->
+          </div>
+          <div class="judges-note">
+            <span>* Skrajne noty (najwyższa i najniższa) odrzucone zgodnie z przepisami FIS.</span>
+            <span id="resStyleSum" class="style-sum">Suma za styl: 55.5 pkt</span>
+          </div>
+        </div>
+
+        <div class="total-score-banner">
+          <span class="tot-label">ŁĄCZNA NOTA SKOKU:</span>
+          <span id="totalPointsDisplay" class="tot-points">135.6 PKT</span>
+        </div>
+
+        <!-- Leaderboard Submit Form inside Results Modal -->
+        <div id="submitScoreSection" class="submit-score-section">
+          <label for="inputPlayerName">TWÓJ PODPIS W HISTORII:</label>
+          <div class="submit-row">
+            <input type="text" id="inputPlayerName" class="retro-input" maxlength="20" value="Adam Małysz" placeholder="Wpisz imię...">
+            <button id="btnSaveScore" class="retro-btn btn-gold">ZAPISZ DO TABELI</button>
+          </div>
+          <span id="saveStatusMsg" class="save-status-msg"></span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btnRestart" class="retro-btn btn-danger">↺ SKOCZ PONOWNIE (R)</button>
+        <button id="btnNextRound" class="retro-btn btn-green">NASTĘPNA SERIA / KOLEJNY SKOK ➔</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Tournament High Scores & Leaderboard -->
+  <div id="leaderboardModal" class="retro-modal hidden">
+    <div class="modal-dialog leaderboard-dialog">
+      <div class="modal-header tvp-header">
+        <h2>TABELA REKORDÓW PUCHARU ŚWIATA</h2>
+        <button id="btnCloseLeaderboard" class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <table class="retro-table">
+          <thead>
+            <tr>
+              <th>M-CE</th>
+              <th>SKOCZEK</th>
+              <th>KRAJ</th>
+              <th>SKOCZNIA</th>
+              <th>I SERIA</th>
+              <th>II SERIA</th>
+              <th>PUNKTY</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardTableBody">
+            <!-- Populated via SkiUI.renderLeaderboard -->
+            <tr>
+              <td colspan="7" class="loading-cell">Wczytywanie wyników z serwera...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button id="btnRefreshLeaderboard" class="retro-btn">ODŚWIEŻ</button>
+        <button id="btnCloseLeaderboardFooter" class="retro-btn btn-danger">ZAMKNIJ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Instructions & Lore -->
+  <div id="helpModal" class="retro-modal hidden">
+    <div class="modal-dialog">
+      <div class="modal-header tvp-header">
+        <h2>JAK GRAĆ / INSTRUKCJA DELUXE SKI JUMP</h2>
+        <button id="btnCloseHelp" class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body help-content">
+        <h3>1. ROZBIEG (IN-RUN)</h3>
+        <p>Naciśnij <strong>SPACJĘ</strong> lub kliknij <strong>START</strong>, aby skoczek ruszył z belki startowej.</p>
+        
+        <h3>2. WYBICIE Z PROGU (TAKE-OFF)</h3>
+        <p>Tuż przed krawędzią progu naciśnij <strong>SPACJĘ</strong> lub <strong>LPM</strong>. Precyzja wybicia decyduje o prędkości wznoszenia i energii początkowej!</p>
+
+        <h3>3. FAZA LOTU (FLIGHT AERODYNAMICS)</h3>
+        <p>Kieruj pochyleniem skoczka za pomocą <strong>Strzałek GÓRA/DÓŁ</strong> lub <strong>Ruchu Myszy</strong>. Zbyt mocne pochylenie grozi upadkiem, a zbyt małe hamuje lot o ścianę wiatru.</p>
+
+        <h3>4. LĄDOWANIE (LANDING & TELEMARK)</h3>
+        <p>Gdy zbliżasz się do zeskoku, naciśnij <strong>SPACJĘ</strong> dla bezpiecznego lądowania na dwie nogi, lub klawisz <strong>T</strong> dla perfekcyjnego <em>Telemarku</em> z najwyższymi notami sędziowskimi (po 19.5 - 20.0 pkt)!</p>
+      </div>
+      <div class="modal-footer">
+        <button id="btnCloseHelpFooter" class="retro-btn btn-green">ROZUMIEM, LECIMY!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts in strict order from DESIGN.md using relative paths -->
+  <script src="audio.js"></script>
+  <script src="ui.js"></script>
+  <script src="physics.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

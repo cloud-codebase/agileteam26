@@ -1,0 +1,833 @@
+/* ==========================================================================
+   Jumps5k - 2000s Polish TVP Broadcast & DSJ CRT Retro Aesthetic
+   ========================================================================== */
+
+:root {
+  --tvp-red: #d1121d;
+  --tvp-dark-red: #8f0b13;
+  --tvp-gold: #f4c430;
+  --tvp-blue: #0b2d64;
+  --tvp-dark: #0f141d;
+  --tvp-white: #ffffff;
+  --tvp-gray: #d4d8e0;
+  --tvp-green: #11a842;
+  --crt-glow: rgba(220, 240, 255, 0.12);
+  --font-pixel: 'Courier New', Courier, monospace, monospace;
+  --font-broadcast: 'Trebuchet MS', 'Arial Black', Impact, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+body {
+  background-color: #080c14;
+  color: var(--tvp-white);
+  font-family: var(--font-broadcast);
+  overflow-x: hidden;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* CRT Scanlines and Tube Vignette Overlay */
+.crt-screen {
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.4);
+}
+
+.scanlines {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.03),
+    rgba(0, 255, 0, 0.01),
+    rgba(0, 0, 255, 0.03)
+  );
+  background-size: 100% 3px, 6px 100%;
+}
+
+.tvp-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9998;
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.85);
+}
+
+/* Header & Polish TVP Broadcast Bar */
+.broadcast-header {
+  background: linear-gradient(180deg, #1b2838 0%, #0d1520 100%);
+  border-bottom: 3px solid var(--tvp-red);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
+  z-index: 10;
+}
+
+.broadcast-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: linear-gradient(90deg, var(--tvp-blue) 0%, #153b7c 50%, var(--tvp-dark-red) 100%);
+  border-bottom: 2px solid var(--tvp-gold);
+}
+
+.tvp-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tvp-box {
+  background-color: var(--tvp-blue);
+  color: var(--tvp-white);
+  border: 2px solid var(--tvp-white);
+  font-family: 'Arial Black', sans-serif;
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: 2px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8);
+}
+
+.sport-badge {
+  background: var(--tvp-red);
+  color: #fff;
+  font-size: 13px;
+  font-weight: bold;
+  padding: 3px 6px;
+  border-radius: 2px;
+  letter-spacing: 1px;
+}
+
+.live-dot {
+  color: #ff3333;
+  font-size: 12px;
+  font-weight: 900;
+  animation: pulse-dot 1.2s infinite ease-in-out;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.95); }
+}
+
+.tournament-title h1 {
+  font-size: 16px;
+  letter-spacing: 1px;
+  color: #fff;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.tournament-title .sub-title {
+  font-size: 11px;
+  color: var(--tvp-gold);
+  letter-spacing: 2px;
+  font-weight: bold;
+}
+
+.broadcast-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Control Ribbon (Hill / Gate / Status) */
+.control-ribbon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px;
+  background-color: #0b111a;
+  border-bottom: 1px solid #1e2c3f;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ribbon-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.ribbon-group label, .ribbon-group .label {
+  color: var(--tvp-gold);
+}
+
+.retro-select {
+  background-color: #121c2b;
+  color: #fff;
+  border: 1px solid #3c5478;
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: bold;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.retro-select:focus {
+  outline: none;
+  border-color: var(--tvp-gold);
+}
+
+.badge-phase {
+  background: var(--tvp-blue);
+  border: 1px solid #3c78d8;
+  color: #a4c2f4;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.badge-phase.flight {
+  background: #1155cc;
+  color: #fff;
+  box-shadow: 0 0 8px rgba(17, 85, 204, 0.7);
+}
+
+.badge-phase.landed {
+  background: var(--tvp-green);
+  color: #fff;
+}
+
+.badge-phase.crashed {
+  background: var(--tvp-red);
+  color: #fff;
+}
+
+/* Retro Buttons */
+.retro-btn {
+  background: linear-gradient(180deg, #2b3e58 0%, #15202e 100%);
+  color: #fff;
+  border: 1px solid #4a6890;
+  padding: 5px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: bold;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.retro-btn:hover {
+  background: linear-gradient(180deg, #3c567a 0%, #1e2e42 100%);
+  border-color: var(--tvp-gold);
+  transform: translateY(-1px);
+}
+
+.retro-btn:active {
+  transform: translateY(1px);
+}
+
+.retro-btn.btn-gold {
+  background: linear-gradient(180deg, #e6b800 0%, #997a00 100%);
+  border-color: #ffe066;
+  color: #0b111a;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.retro-btn.btn-green {
+  background: linear-gradient(180deg, #1db954 0%, #0d6e2e 100%);
+  border-color: #4ce67d;
+}
+
+.retro-btn.btn-danger {
+  background: linear-gradient(180deg, #e62222 0%, #8b0a0a 100%);
+  border-color: #ff6b6b;
+}
+
+/* Main Game Layout */
+.game-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  position: relative;
+}
+
+.canvas-container {
+  position: relative;
+  width: 800px;
+  height: 450px;
+  border: 4px solid #1a2533;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.9), 0 0 15px rgba(30, 80, 150, 0.3);
+  background-color: #000;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+#gameCanvas {
+  display: block;
+  width: 800px;
+  height: 450px;
+  background-color: #72a4d2; /* Winter sky placeholder */
+  image-rendering: pixelated;
+}
+
+/* In-Flight TVP Broadcast HUD Overlay */
+.broadcast-hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Jumper Card (Top Left) */
+.jumper-card {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(90deg, rgba(11, 45, 100, 0.92) 0%, rgba(15, 20, 29, 0.85) 100%);
+  border: 2px solid var(--tvp-gold);
+  border-left: 6px solid var(--tvp-red);
+  padding: 4px 10px;
+  border-radius: 4px;
+  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.jumper-flag {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.jumper-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.jumper-bib {
+  font-size: 10px;
+  color: var(--tvp-gold);
+  font-weight: bold;
+}
+
+.jumper-name {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.jumper-record {
+  font-size: 10px;
+  color: #a4c2f4;
+  font-family: var(--font-pixel);
+}
+
+/* Wind Gauge (Top Right) */
+.wind-gauge-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(11, 20, 35, 0.9);
+  border: 2px solid #2e4b75;
+  border-radius: 4px;
+  padding: 6px 10px;
+  min-width: 140px;
+  text-align: center;
+  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.wind-label {
+  font-size: 10px;
+  color: var(--tvp-gold);
+  font-weight: bold;
+  border-bottom: 1px solid #1e3555;
+  padding-bottom: 2px;
+  margin-bottom: 4px;
+}
+
+.wind-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.wind-compass-arrow {
+  display: inline-block;
+  font-size: 20px;
+  color: var(--tvp-gold);
+  transform-origin: center center;
+  transition: transform 0.2s ease;
+  text-shadow: 0 0 4px rgba(244, 196, 48, 0.6);
+}
+
+.wind-values {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.wind-speed {
+  font-family: var(--font-pixel);
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
+}
+
+.wind-desc {
+  font-size: 9px;
+  color: #8bb3e8;
+  font-weight: bold;
+}
+
+/* Telemetry Bar (Bottom Left) */
+.telemetry-bar {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(8, 14, 24, 0.92);
+  border: 2px solid var(--tvp-blue);
+  border-bottom: 4px solid var(--tvp-red);
+  padding: 6px 14px;
+  border-radius: 4px;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.8);
+}
+
+.telem-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.telem-label {
+  font-size: 9px;
+  color: #8da4c4;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.telem-value {
+  font-family: var(--font-pixel);
+  font-size: 15px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
+.telem-divider {
+  width: 1px;
+  height: 24px;
+  background-color: #243b5e;
+}
+
+/* Bottom Center Message Strip */
+.hud-message-strip {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, rgba(209, 18, 29, 0.95) 0%, rgba(143, 11, 19, 0.95) 100%);
+  border: 2px solid var(--tvp-gold);
+  color: #fff;
+  font-weight: 900;
+  font-size: 14px;
+  padding: 6px 18px;
+  border-radius: 3px;
+  letter-spacing: 1px;
+  box-shadow: 0 0 15px rgba(209, 18, 29, 0.8);
+  animation: flash-msg 0.8s infinite alternate;
+}
+
+.hud-message-strip.hidden {
+  display: none;
+}
+
+@keyframes flash-msg {
+  from { border-color: var(--tvp-gold); }
+  to { border-color: #fff; }
+}
+
+/* Keyboard Reference Ribbon */
+.keyboard-legend {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #8da4c4;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+  background-color: rgba(11, 17, 26, 0.8);
+  padding: 6px 16px;
+  border-radius: 4px;
+  border: 1px solid #1a293f;
+}
+
+kbd {
+  background: #202e42;
+  border: 1px solid #425b80;
+  color: var(--tvp-gold);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  font-weight: bold;
+}
+
+/* Retro Modals */
+.retro-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+}
+
+.retro-modal.hidden {
+  display: none;
+}
+
+.modal-dialog {
+  background: linear-gradient(180deg, #131c2b 0%, #0c121c 100%);
+  border: 3px solid var(--tvp-blue);
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.9), inset 0 0 15px rgba(30, 80, 150, 0.3);
+  border-radius: 6px;
+  width: 90%;
+  max-width: 620px;
+  overflow: hidden;
+  animation: modal-pop 0.2s ease-out;
+}
+
+.modal-dialog.leaderboard-dialog {
+  max-width: 720px;
+}
+
+@keyframes modal-pop {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-header.tvp-header {
+  background: linear-gradient(90deg, var(--tvp-blue) 0%, var(--tvp-dark-red) 100%);
+  padding: 10px 16px;
+  border-bottom: 2px solid var(--tvp-gold);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  font-size: 15px;
+  letter-spacing: 1px;
+  color: #fff;
+  margin: 0;
+}
+
+.modal-badge {
+  background: var(--tvp-gold);
+  color: #0b111a;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal-close-btn:hover {
+  color: var(--tvp-red);
+}
+
+.modal-body {
+  padding: 16px;
+  color: #d1d9e6;
+}
+
+.modal-footer {
+  padding: 10px 16px;
+  background-color: #080d14;
+  border-top: 1px solid #1a2638;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Results Breakdown Cards */
+.results-summary-card {
+  display: flex;
+  justify-content: space-around;
+  background-color: #172436;
+  border: 1px solid #2b4160;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.res-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.res-label {
+  font-size: 11px;
+  color: var(--tvp-gold);
+  font-weight: bold;
+}
+
+.res-highlight {
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
+}
+
+.res-distance {
+  font-family: var(--font-pixel);
+  font-size: 22px;
+  font-weight: 900;
+  color: #4ce67d;
+  text-shadow: 0 0 8px rgba(76, 230, 125, 0.4);
+}
+
+.res-sub {
+  font-size: 11px;
+  color: #8da4c4;
+}
+
+.res-wind {
+  font-family: var(--font-pixel);
+  font-size: 16px;
+  font-weight: bold;
+  color: #a4c2f4;
+}
+
+/* 5 Judges Grid */
+.judges-section h3 {
+  font-size: 12px;
+  color: #8da4c4;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.judges-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.judge-card {
+  background: #111a26;
+  border: 2px solid #2c4263;
+  border-radius: 4px;
+  padding: 6px 4px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.judge-card.eliminated {
+  opacity: 0.5;
+  border-color: #4a2024;
+  text-decoration: line-through;
+  background: #1a1214;
+}
+
+.judge-card.eliminated .judge-score {
+  color: #e06c75;
+}
+
+.judge-flag {
+  font-size: 18px;
+  margin-bottom: 2px;
+}
+
+.judge-country {
+  font-size: 10px;
+  font-weight: bold;
+  color: #8da4c4;
+}
+
+.judge-score {
+  font-family: var(--font-pixel);
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--tvp-gold);
+  margin-top: 4px;
+}
+
+.judges-note {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #7287a3;
+  margin-bottom: 14px;
+}
+
+.style-sum {
+  font-weight: bold;
+  color: #a4c2f4;
+}
+
+/* Total Score Highlight Banner */
+.total-score-banner {
+  background: linear-gradient(90deg, var(--tvp-blue) 0%, var(--tvp-red) 100%);
+  border: 2px solid var(--tvp-gold);
+  padding: 10px 16px;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.tot-label {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.tot-points {
+  font-family: var(--font-pixel);
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--tvp-gold);
+  text-shadow: 0 0 10px rgba(244, 196, 48, 0.6);
+}
+
+/* Score Submission Row */
+.submit-score-section {
+  background-color: #0b111a;
+  border: 1px solid #1a283b;
+  padding: 10px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.submit-score-section label {
+  font-size: 11px;
+  color: #8da4c4;
+  font-weight: bold;
+}
+
+.submit-row {
+  display: flex;
+  gap: 8px;
+}
+
+.retro-input {
+  flex: 1;
+  background-color: #121c2b;
+  color: #fff;
+  border: 1px solid #3c5478;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: bold;
+  border-radius: 3px;
+}
+
+.retro-input:focus {
+  outline: none;
+  border-color: var(--tvp-gold);
+}
+
+.save-status-msg {
+  font-size: 11px;
+  color: #4ce67d;
+  min-height: 14px;
+}
+
+/* Retro Table for Leaderboard */
+.retro-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  background-color: #0d141f;
+}
+
+.retro-table th {
+  background: linear-gradient(180deg, #1f2f45 0%, #111a26 100%);
+  color: var(--tvp-gold);
+  padding: 8px 6px;
+  text-align: left;
+  border-bottom: 2px solid var(--tvp-blue);
+  font-size: 11px;
+}
+
+.retro-table td {
+  padding: 7px 6px;
+  border-bottom: 1px solid #172436;
+}
+
+.retro-table tr:nth-child(even) {
+  background-color: #101824;
+}
+
+.retro-table tr:hover {
+  background-color: #1a283b;
+}
+
+.retro-table tr.top-podium {
+  color: var(--tvp-gold);
+  font-weight: bold;
+}
+
+.loading-cell {
+  text-align: center;
+  padding: 20px;
+  color: #8da4c4;
+  font-style: italic;
+}
+
+/* Help Modal Content */
+.help-content h3 {
+  font-size: 13px;
+  color: var(--tvp-gold);
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+
+.help-content p {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #c0cddf;
+}
