@@ -1,0 +1,13 @@
+{
+  "name": "jumps5k",
+  "version": "1.0.0",
+  "description": "Retro Ski Jumps DSJ-style game with Adam Małysz tribute and live leaderboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5"
+  }
+}
