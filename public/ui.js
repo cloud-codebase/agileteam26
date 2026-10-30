@@ -140,15 +140,19 @@
 
   /**
    * Displays the 5-judge score breakdown modal and official distance/points calculation.
+   * Handles both stylePoints / totalStylePoints, and windPoints / windCompensation formats.
+   * Accepts details.judgeScores as array of numbers or array of objects ({country, score}).
    * @param {Object} details
    * @param {string} [details.jumperName] - Name of the jumper
    * @param {number} details.distance - Distance jumped in meters
    * @param {number} details.distancePoints - Points awarded for distance
-   * @param {Array<number>} details.judgeScores - Array of 5 style marks (e.g. [19.0, 19.5, 18.5, 19.0, 19.0])
-   * @param {number} details.stylePoints - Sum of 3 middle judge scores
-   * @param {number} details.windPoints - Wind compensation points
+   * @param {Array<number|Object>} details.judgeScores - Array of 5 style marks or objects
+   * @param {number} [details.stylePoints] - Sum of 3 middle judge scores
+   * @param {number} [details.totalStylePoints] - Alternative key for style sum
+   * @param {number} [details.windPoints] - Wind compensation points
+   * @param {number} [details.windCompensation] - Alternative key for wind points
    * @param {number} details.totalPoints - Final round score
-   * @param {boolean} [details.telemark] - Whether landed with telemark
+   * @param {string} [details.landingStyle] - 'TELEMARK' | 'TWO_FOOT' | 'CRASH'
    */
   function showJudgeScores(details) {
     if (!details || !elements.resultsModal) return;
@@ -166,14 +170,16 @@
       elements.resDistPts.textContent = `(${distPts.toFixed(1)} pkt za odl.)`;
     }
 
+    const windVal = details.windPoints !== undefined ? details.windPoints : (details.windCompensation || 0);
     if (elements.resWindPts) {
-      const windPts = details.windPoints || 0;
-      const sign = windPts >= 0 ? '+' : '';
-      elements.resWindPts.textContent = `${sign}${windPts.toFixed(1)} pkt`;
+      const sign = windVal >= 0 ? '+' : '';
+      elements.resWindPts.textContent = `${sign}${windVal.toFixed(1)} pkt`;
     }
 
+    const styleVal = details.stylePoints !== undefined ? details.stylePoints : (details.totalStylePoints || 0);
     if (elements.resStyleSum) {
-      elements.resStyleSum.textContent = `Suma za styl: ${(details.stylePoints || 0).toFixed(1)} pkt`;
+      const styleDesc = details.landingStyle === 'TELEMARK' ? ' (Telemark)' : (details.landingStyle === 'CRASH' ? ' (Upadek)' : ' (Dwie nogi)');
+      elements.resStyleSum.textContent = `Suma za styl: ${styleVal.toFixed(1)} pkt${styleDesc}`;
     }
 
     if (elements.totalPointsDisplay) {
@@ -183,22 +189,39 @@
     // Render 5 Judges Breakdown
     if (elements.judgeScoresList && Array.isArray(details.judgeScores)) {
       elements.judgeScoresList.innerHTML = '';
-      const scores = details.judgeScores.slice();
+      
+      // Normalize raw scores into array of { country, score, flag }
+      const normalizedList = details.judgeScores.map((item, idx) => {
+        const defaultInfo = JUDGE_PANEL[idx] || { country: `J${idx + 1}`, flag: '🏳️' };
+        if (typeof item === 'object' && item !== null) {
+          const match = JUDGE_PANEL.find(p => p.country === item.country) || defaultInfo;
+          return {
+            country: item.country || match.country,
+            score: Number(item.score),
+            flag: match.flag
+          };
+        } else {
+          return {
+            country: defaultInfo.country,
+            score: Number(item),
+            flag: defaultInfo.flag
+          };
+        }
+      });
 
-      // Find min and max to mark as eliminated per FIS rules
-      const minScore = Math.min(...scores);
-      const maxScore = Math.max(...scores);
+      // Find min and max score to mark as eliminated per official FIS rules
+      const numericScores = normalizedList.map(j => j.score);
+      const minScore = Math.min(...numericScores);
+      const maxScore = Math.max(...numericScores);
       let minEliminated = false;
       let maxEliminated = false;
 
-      scores.forEach((score, idx) => {
-        const judgeInfo = JUDGE_PANEL[idx] || { country: `J${idx + 1}`, flag: '🏳️' };
+      normalizedList.forEach((judge) => {
         let isEliminated = false;
-
-        if (!minEliminated && score === minScore) {
+        if (!minEliminated && judge.score === minScore) {
           isEliminated = true;
           minEliminated = true;
-        } else if (!maxEliminated && score === maxScore) {
+        } else if (!maxEliminated && judge.score === maxScore) {
           isEliminated = true;
           maxEliminated = true;
         }
@@ -206,9 +229,10 @@
         const judgeCard = document.createElement('div');
         judgeCard.className = 'judge-card' + (isEliminated ? ' eliminated' : '');
         judgeCard.innerHTML = `
-          <div class="judge-flag">${judgeInfo.flag}</div>
-          <div class="judge-country">${judgeInfo.country}</div>
-          <div class="judge-score">${score.toFixed(1)}</div>
+          <div class="judge-flag">${judge.flag}</div>
+          <div class="judge-country">${judge.country}</div>
+          <div class="judge-score">${judge.score.toFixed(1)}</div>
+          ${isEliminated ? '<span class="eliminated-badge">ODRZUCONA</span>' : ''}
         `;
         elements.judgeScoresList.appendChild(judgeCard);
       });

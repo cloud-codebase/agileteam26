@@ -6,7 +6,7 @@
  * - Procedural ski jumping hill rendering (tower, in-run ramp, snow hill profile, distance markers: K-point red line, HS-point green line)
  * - Animated ski jumper character (in-run crouch, V-style aerodynamic flight, telemark landing pose, crash ragdoll/tumble)
  * - Animated spectators, Polish flags waving in wind, pine trees, falling snow particles
- * - Keyboard (Space, ArrowUp, ArrowDown, W, S), Mouse (clicks / drag), and Touch controls
+ * - Keyboard (Space, ArrowUp, ArrowDown, W, S, T), Mouse (clicks / drag), and Touch controls
  * - Two-round tournament system with score aggregation and relative fetch calls to backend ('api/hills', 'api/leaderboard')
  */
 (function() {
@@ -41,7 +41,8 @@
         pitchUp: false,
         pitchDown: false,
         jumpPressed: false,
-        landingPressed: false
+        landingPressed: false,
+        telemarkPressed: false
       };
 
       // Camera
@@ -209,7 +210,7 @@
         // Space / Click pressed while in-run triggers takeoff jump!
         this.input.jumpPressed = true;
       } else if (this.state.phase === 'FLIGHT') {
-        // Space / Click pressed while in flight triggers telemark preparation
+        // Space / Click pressed while in flight triggers landing preparation
         this.input.landingPressed = true;
       }
     }
@@ -218,6 +219,7 @@
       this.state = this.getInitialState();
       this.input.jumpPressed = false;
       this.input.landingPressed = false;
+      this.input.telemarkPressed = false;
       this.input.pitchUp = false;
       this.input.pitchDown = false;
       if (window.SkiAudio && typeof window.SkiAudio.stopWind === 'function') {
@@ -249,6 +251,12 @@
         } else if (this.state.phase === 'FLIGHT') {
           this.input.landingPressed = true;
         }
+      } else if (e.code === 'KeyT') {
+        e.preventDefault();
+        if (this.state.phase === 'FLIGHT') {
+          this.input.telemarkPressed = true;
+          this.input.landingPressed = true;
+        }
       } else if (e.code === 'ArrowUp' || e.code === 'KeyW') {
         e.preventDefault();
         this.input.pitchUp = true;
@@ -267,6 +275,8 @@
         this.input.pitchDown = false;
       } else if (e.code === 'Space') {
         this.input.jumpPressed = false;
+      } else if (e.code === 'KeyT') {
+        this.input.telemarkPressed = false;
       }
     }
 
@@ -286,6 +296,7 @@
         } else {
           this.input.pitchDown = true;
           this.input.landingPressed = true;
+          this.input.telemarkPressed = true;
         }
       }
     }
@@ -402,7 +413,9 @@
           distancePoints: score.distancePoints,
           judgeScores: score.judgeScores,
           totalStylePoints: score.totalStylePoints,
+          stylePoints: score.totalStylePoints,
           windCompensation: score.windCompensation,
+          windPoints: score.windCompensation,
           totalPoints: score.totalPoints,
           roundScores: this.roundScores
         });

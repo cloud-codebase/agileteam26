@@ -65,7 +65,6 @@
       }
 
       // Landing hill slope (knoll, landing hill, outrun)
-      // Reference: K-Point is approximately tableX + 380 px
       const dx = x - tableX;
       const kPointPx = (this.currentHill.kPoint || 120) * 3.2; // ~384 px for K120
 
@@ -132,7 +131,7 @@
     /**
      * Update flight physics frame-by-frame
      * @param {Object} state - { x, y, vx, vy, pitch, phase, inRunProgress, landed, crashed, ... }
-     * @param {Object} input - { pitchUp, pitchDown, jumpPressed, landingPressed }
+     * @param {Object} input - { pitchUp, pitchDown, jumpPressed, landingPressed, telemarkPressed }
      * @param {number} dt - seconds elapsed (~0.016)
      * @param {Object} wind - { speed: m/s (-4 to +4), angle: degrees }
      */
@@ -246,7 +245,7 @@
         const jumperFeetY = state.y + 16; // Feet offset
 
         if (jumperFeetY >= groundY) {
-          // Touchdown!
+          // Touchdown collision resolved directly to hill surface
           state.y = groundY - 16;
           this.handleLanding(state, input, groundY);
         }
@@ -258,6 +257,13 @@
       if (state.phase === 'LANDED' || state.phase === 'CRASHED') {
         const groundY = this.getHillY(state.x);
         state.y = groundY - 16;
+
+        // Slope alignment during rollout
+        const slopeAngleDeg = this.getHillSlopeAngle(state.x) * (180 / Math.PI);
+        if (state.phase === 'LANDED') {
+          // Gently align pitch to slope during rollout
+          state.pitch += (slopeAngleDeg - state.pitch) * 0.2;
+        }
 
         // Friction slowing down the jumper
         const friction = state.phase === 'CRASHED' ? 240 : 130;
@@ -275,8 +281,13 @@
 
     /**
      * Evaluate touchdown: Telemark landing vs Two-foot landing vs Crash
+     * Considers:
+     * 1. Relative angle between jumper pitch and snow slope
+     * 2. Vertical impact velocity (slamming onto the hill)
+     * 3. User input: landingPressed (Space/click) or telemarkPressed ('T')
+     * 4. Safe pitch window (around slope incline +/- tolerance)
      */
-    handleLanding(state, input, groundY) {
+    handleLanding(state, input = {}, groundY) {
       const slopeAngleRad = this.getHillSlopeAngle(state.x);
       const slopeAngleDeg = slopeAngleRad * (180 / Math.PI);
       const jumperAngle = state.pitch;
@@ -284,38 +295,51 @@
       // Jumper vertical impact speed relative to slope
       const verticalImpact = state.vy;
 
+      // Relative angle between jumper body/skis and the hill slope
+      // Jumper angle is in degrees; slopeAngleDeg is typically 30-38 degrees on landing hill
+      const angleDiff = Math.abs(jumperAngle - slopeAngleDeg);
+
       // Check crash conditions:
-      // 1. Extreme stall angle (pitch > 45 or pitch < 5)
-      // 2. Severe vertical slamming speed without flare (> 170)
-      const isAngleDisastrous = jumperAngle > 44 || jumperAngle < 3;
+      // 1. Extreme pitch deviation (jumper leaned too far back > 44 or forward nosedive < 4)
+      // 2. Severe relative mismatch with the slope angle (> 25 deg off slope)
+      // 3. Violent vertical impact (> 185 px/s)
+      const isAngleDisastrous = jumperAngle > 44 || jumperAngle < 4 || angleDiff > 24;
       const isImpactViolent = verticalImpact > 185;
 
       if (isAngleDisastrous || isImpactViolent) {
-        // Crash!
+        // Crash / Fall on the landing slope
         state.phase = 'CRASHED';
         state.landingStyle = 'CRASH';
         state.crashed = true;
         if (window.SkiAudio && typeof window.SkiAudio.playCrash === 'function') {
           window.SkiAudio.playCrash();
         }
-      } else if (input.landingPressed || input.jumpPressed || (jumperAngle >= 18 && jumperAngle <= 34)) {
-        // Telemark landing executed! One ski forward, knees bent
-        state.phase = 'LANDED';
-        state.landingStyle = 'TELEMARK';
-        state.crashed = false;
-        if (window.SkiAudio && typeof window.SkiAudio.playLanding === 'function') {
-          window.SkiAudio.playLanding();
-        }
-        if (window.SkiAudio && typeof window.SkiAudio.playCheer === 'function') {
-          window.SkiAudio.playCheer();
-        }
       } else {
-        // Safe Two-Foot Landing (no telemark bonus)
-        state.phase = 'LANDED';
-        state.landingStyle = 'TWO_FOOT';
-        state.crashed = false;
-        if (window.SkiAudio && typeof window.SkiAudio.playLanding === 'function') {
-          window.SkiAudio.playLanding();
+        // Safe touchdown: evaluate Telemark vs Two-foot landing
+        // Telemark requires conscious timing (input.landingPressed or input.telemarkPressed or input.jumpPressed)
+        // AND good alignment with slope (within 14 degrees) AND moderate impact (vy < 155)
+        const wantsTelemark = Boolean(input.telemarkPressed || input.landingPressed || input.jumpPressed);
+        const isSmoothLanding = angleDiff <= 14 && verticalImpact <= 155;
+
+        if (wantsTelemark && isSmoothLanding) {
+          // Perfect / Classical Telemark Landing: one ski lead, knees bent, arms open
+          state.phase = 'LANDED';
+          state.landingStyle = 'TELEMARK';
+          state.crashed = false;
+          if (window.SkiAudio && typeof window.SkiAudio.playLanding === 'function') {
+            window.SkiAudio.playLanding();
+          }
+          if (window.SkiAudio && typeof window.SkiAudio.playCheer === 'function') {
+            window.SkiAudio.playCheer();
+          }
+        } else {
+          // Two-Foot Landing (parallel skis, stiff knees, style mark deductions)
+          state.phase = 'LANDED';
+          state.landingStyle = 'TWO_FOOT';
+          state.crashed = false;
+          if (window.SkiAudio && typeof window.SkiAudio.playLanding === 'function') {
+            window.SkiAudio.playLanding();
+          }
         }
       }
 
@@ -325,37 +349,63 @@
 
     /**
      * Official FIS Ski Jumping Scoring Formula:
-     * - Distance points: 60 pts at K-point, +/- 1.8 pts per meter (large hill) or 2.0 (normal hill)
+     * - Distance points: 60 pts at K-point (120 for Ski Flying K200),
+     *   +/- 1.8 pts per meter (large hill >= 115m), 2.0 (normal hill < 115m), or 1.2 (ski flying K>=180m).
      * - 5 Judges style points: 5 scores between 10.0 and 20.0, drop highest and lowest, sum remaining 3.
-     * - Wind compensation: +/- points based on headwind / tailwind.
-     * @returns {Object} { distancePoints, judgeScores, totalStylePoints, windCompensation, totalPoints }
+     * - Wind compensation: +/- points based on headwind (minus compensation) or tailwind (plus compensation).
+     * @param {number} distance - Distance jumped in meters
+     * @param {string} landingStyle - 'TELEMARK' | 'TWO_FOOT' | 'CRASH'
+     * @param {number} windSpeed - Wind speed in m/s (positive = headwind, negative = tailwind)
+     * @returns {Object} { distance, distancePoints, judgeScores, totalStylePoints, stylePoints, windCompensation, windPoints, totalPoints }
      */
     calculateScore(distance, landingStyle = 'TELEMARK', windSpeed = 0) {
-      const hill = this.currentHill;
+      const hill = this.currentHill || DEFAULT_HILL;
       const kPoint = hill.kPoint || 120;
-      const ptsPerMeter = kPoint >= 115 ? 1.8 : 2.0;
+
+      // FIS Points per meter by hill classification:
+      // Ski Flying (K >= 180): 120 base at K, 1.2 pts/m
+      // Large Hill (K >= 115): 60 base at K, 1.8 pts/m
+      // Normal Hill (K < 115): 60 base at K, 2.0 pts/m
+      let baseDistancePoints = 60.0;
+      let ptsPerMeter = 1.8;
+
+      if (kPoint >= 180) {
+        baseDistancePoints = 120.0;
+        ptsPerMeter = 1.2;
+      } else if (kPoint >= 115) {
+        baseDistancePoints = 60.0;
+        ptsPerMeter = 1.8;
+      } else {
+        baseDistancePoints = 60.0;
+        ptsPerMeter = 2.0;
+      }
 
       // 1. Distance Points
       const distanceDiff = distance - kPoint;
-      const distancePoints = Math.round((60.0 + distanceDiff * ptsPerMeter) * 10) / 10;
+      const distancePoints = Math.round((baseDistancePoints + distanceDiff * ptsPerMeter) * 10) / 10;
 
-      // 2. Five Judges' Scores
-      // Base score according to landing style
+      // 2. Five Judges' Style Scores
+      // Telemark: base 18.0 - 19.5 (up to 20.0 beyond K-point)
+      // Two-foot: 15.5 - 17.0 (deduction of 2.0 - 3.0 pts for lack of telemark per FIS rule 433)
+      // Crash: 7.0 - 9.5 (heavy deduction of 10.0 pts for fall)
       let baseJudge = 18.5;
       if (landingStyle === 'TELEMARK') {
-        baseJudge = 18.5 + (distance >= kPoint ? 0.5 : 0.0);
+        baseJudge = distance >= kPoint ? 19.0 : 18.5;
       } else if (landingStyle === 'TWO_FOOT') {
-        baseJudge = 16.5; // deduction for lack of telemark
+        baseJudge = 16.5;
       } else {
-        baseJudge = 9.5; // heavy fall/crash deduction
+        baseJudge = 8.5;
       }
 
-      // Generate 5 realistic judge scores with minor variations (+/- 0.5)
       const judgeCountries = ['POL', 'AUT', 'NOR', 'GER', 'SLO'];
-      const judgeScores = judgeCountries.map(country => {
-        const jitter = (Math.floor(Math.random() * 3) - 1) * 0.5; // -0.5, 0, +0.5
-        let score = Math.max(8.0, Math.min(20.0, baseJudge + jitter));
-        return { country, score: Math.round(score * 2) / 2 };
+      const judgeScores = judgeCountries.map((country, idx) => {
+        // Pseudo-random minor jitter (-0.5, 0.0, +0.5) with slight home bias realism
+        const jitterSteps = [0, 0.5, -0.5, 0.5, -0.5];
+        const step = jitterSteps[idx % jitterSteps.length];
+        let score = Math.max(6.0, Math.min(20.0, baseJudge + step));
+        // Round to nearest 0.5 increment per FIS standards
+        score = Math.round(score * 2) / 2;
+        return { country, score };
       });
 
       // Sort, drop highest and lowest, sum middle 3
@@ -364,11 +414,13 @@
       const totalStylePoints = Math.round(middleScores.reduce((acc, val) => acc + val, 0) * 10) / 10;
 
       // 3. Wind Compensation
-      // Headwind (windSpeed > 0): subtracted compensation points
-      // Tailwind (windSpeed < 0): added compensation points
-      const windCompensation = Math.round((-windSpeed * 4.8) * 10) / 10;
+      // Headwind (windSpeed > 0): helps flight -> minus compensation points
+      // Tailwind (windSpeed < 0): hinders flight -> plus compensation points
+      // FIS formula approximation: delta_pts = -windSpeed * (kPoint - 36) / 20
+      const windFactor = (kPoint - 36) / 17.5;
+      const windCompensation = Math.round((-windSpeed * windFactor) * 10) / 10;
 
-      // 4. Total points
+      // 4. Total round points (non-negative)
       const totalPoints = Math.max(0, Math.round((distancePoints + totalStylePoints + windCompensation) * 10) / 10);
 
       return {
@@ -376,7 +428,9 @@
         distancePoints,
         judgeScores,
         totalStylePoints,
+        stylePoints: totalStylePoints, // Alias for seamless compatibility
         windCompensation,
+        windPoints: windCompensation,   // Alias for seamless compatibility
         totalPoints
       };
     }
