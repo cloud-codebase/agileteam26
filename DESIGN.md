@@ -1,55 +1,58 @@
-# Technical Architecture Blueprint: Retro Ski Jumps Game (Adam Małysz / DSJ Style)
+# Technical Architecture Blueprint: Retro Ski Jumps (DSJ / Adam Małysz) - Sprint 2.0
 
 ## 1. Branch & Single-Container Cloud Run Architecture
-- **Branch**: `feat-jumps5k`
-- **Runtime**: Node.js 20 Alpine (`node:20-alpine`) single-container listening on `0.0.0.0:8080`.
+- **Git Branch**: `feat-jumps5k`
+- **Runtime**: Node.js 20 Alpine (`node:20-alpine`) single container listening on `0.0.0.0:8080`.
 - **Server**: Express.js serving static assets from `public/` and JSON REST API under `/api/...`.
-- **Subpath Rule**: App runs behind load balancer `/demo/index.html`. All frontend asset tags (`href="styles.css"`, `src="physics.js"`) and API fetches (`fetch('api/hills')`, `fetch('api/leaderboard')`) **MUST** use relative paths with NO leading slash!
+- **Subpath Safe Rules**: App runs behind load-balancer at `/demo/index.html`.
+  - In `index.html`: strictly relative asset tags without leading slash (`href="styles.css"`, `src="physics.js"`).
+  - In Frontend JS: strictly relative `fetch('api/hills')`, `fetch('api/leaderboard')` — **NEVER** `/api/...`.
 
-## 2. Modular File Tree & Ownership
+## 2. Modular File Tree & Developer Ownership
 ```text
-├── Dockerfile                  # Container definition on port 8080 (SCRUM-143)
-├── package.json                # Express server dependencies & scripts (SCRUM-143)
-├── server.js                   # Express server, in-memory seed data, REST routes (SCRUM-143)
+├── Dockerfile                  # Container definition on port 8080 (PRESERVED)
+├── package.json                # Express server dependencies & scripts (PRESERVED)
+├── server.js                   # Express server, hill profiles & leaderboard API (SCRUM-149)
 ├── public/
-│   ├── index.html              # Retro DSJ markup, TVP-style HUD & modals (SCRUM-144)
-│   ├── styles.css              # Pixel/retro TVP red-white broadcast theme & CRT FX (SCRUM-144)
-│   ├── ui.js                   # HUD controller, modal manager, judge scores formatting (SCRUM-144)
-│   ├── audio.js                # Web Audio retro synth FX (wind, takeoff, fanfares, crash) (SCRUM-145)
-│   ├── physics.js              # In-run speed, flight pitch aerodynamics, landing & ragdoll (SCRUM-145)
-│   └── game.js                 # 60FPS Canvas game loop, input handlers, tournament state (SCRUM-145)
+│   ├── index.html              # TVP broadcast markup, telemetry HUD overlays, modals (SCRUM-149)
+│   ├── styles.css              # CRT scanlines, TVP styling, telemetry HUD styling (SCRUM-149)
+│   ├── ui.js                   # HUD controller, 5-judge score modal & leaderboard view (SCRUM-148, SCRUM-149)
+│   ├── physics.js              # DSJ Flight aerodynamics, AoA lift/drag, takeoff timing (SCRUM-147)
+│   ├── audio.js                # Web Audio synthesizer SFX (takeoff, whoosh, crowd, crash) (PRESERVED)
+│   └── game.js                 # 60FPS Canvas loop, hill geometry render, landing & HUD link (SCRUM-148, SCRUM-149)
 ├── cloudbuild.yaml             # PRESERVED from main
 └── README.md                   # PRESERVED from main
 ```
 
-## 3. API Contracts & Data Shapes (SCRUM-143)
-- `GET /api/hills`: Returns array of hills:
-  `[{ id: "zakopane", name: "Wielka Krokiew (Zakopane)", kPoint: 120, hsPoint: 134, record: { distance: 140.5, holder: "Adam Małysz", year: 2002 } }, ...]`
-- `GET /api/leaderboard`: Returns high scores:
-  `[{ rank: 1, name: "Adam Małysz", country: "POL", hill: "Zakopane", distance1: 138.5, distance2: 139.0, totalPoints: 285.5 }, ...]`
-- `POST /api/leaderboard`: Body `{ name, country, hill, distance1, distance2, totalPoints }` -> appends & returns updated top 10.
+## 3. Sprint 2.0 Task-to-File Mapping & Parallel Waves
+| Task Key | Developer | Target Files | Wave | Core Responsibilities |
+|---|---|---|---|---|
+| **SCRUM-147** | Aramis | `public/physics.js` | Wave 1 | Flight aerodynamics overhaul: AoA lift/drag formulas ($L=C_l \cdot v^2, D=C_d \cdot v^2$), precision takeoff impulse window, stall/tumble detection, dynamic wind vectors |
+| **SCRUM-148** | Athos | `public/physics.js` (scoring/landing sections), `public/ui.js` | Wave 1 | Contact collision along hill curves, telemark vs two-foot vs crash detection, FIS scoring formula (middle 3 of 5 judges, wind points, distance +/- pts) |
+| **SCRUM-149** | Porthos | `server.js`, `public/index.html`, `public/styles.css`, `public/game.js` | Wave 1 | Real-world hill profiles (Zakopane K120/HS134, Planica K200/HS240, Lahti K116), TVP telemetry HUD (km/h, green leader to-beat line on snow), leaderboard API |
 
-## 4. DOM IDs & JS Interface Contracts
-- **Script Order in `public/index.html`**:
+*To prevent merge conflicts during Wave 1*: Aramis owns `public/physics.js` aerodynamic flight & takeoff. Athos coordinates landing & FIS scoring functions in `public/physics.js` / `public/ui.js`. Porthos owns `server.js`, `index.html`, `styles.css`, and canvas hill rendering in `game.js`.
+
+## 4. API Endpoints & Data Contracts (SCRUM-149)
+- `GET api/hills`: Returns array of hills:
+  `[{ id: "zakopane", name: "Wielka Krokiew (Zakopane)", kPoint: 120, hsPoint: 134, record: { distance: 140.5, holder: "Adam Małysz", year: 2002 } }, { id: "planica", name: "Letalnica bratov Gorišek (Planica)", kPoint: 200, hsPoint: 240, record: { distance: 252.0, holder: "Ryoyu Kobayashi", year: 2019 } }, { id: "lahti", name: "Salpausselkä (Lahti)", kPoint: 116, hsPoint: 130, record: { distance: 138.0, holder: "Andreas Widhölzl", year: 2006 } }]`
+- `GET api/leaderboard`: Returns high scores array sorted by totalPoints desc.
+- `POST api/leaderboard`: Body `{ name, country, hill, distance1, distance2, totalPoints }` -> appends & returns top 20.
+
+## 5. Global JavaScript Interfaces & DOM Contracts
+- **Script Execution Order** in `public/index.html`:
   `audio.js` -> `ui.js` -> `physics.js` -> `game.js`
-- **Key DOM Element IDs** (`public/index.html` owned by SCRUM-144):
-  - `#gameCanvas`: `<canvas width="800" height="450">`
-  - `#hillSelect`: Dropdown to pick active hill (Zakopane, Wisła, Planica, Oberstdorf)
-  - `#hudSpeed`, `#hudDistance`, `#hudWindSpeed`, `#hudWindAngle`: In-flight status indicators
-  - `#hudPhase`: Current phase ("IN_RUN", "FLIGHT", "LANDED", "CRASHED", "SCORED")
-  - `#resultsModal`, `#judgeScoresList`, `#totalPointsDisplay`, `#btnNextRound`, `#btnRestart`
-  - `#leaderboardModal`, `#leaderboardTableBody`
+- **DOM IDs**:
+  - Canvas: `#gameCanvas` (800x450)
+  - Telemetry HUD: `#hudSpeed`, `#hudDistance`, `#hudWindSpeed`, `#hudWindAngle`, `#hudPhase`, `#hudHillPoints`, `#windArrow`
+  - Green To-Beat Line: Rendered directly on Canvas slope at leader's required distance
+  - Results Modal: `#resultsModal`, `#resJumperName`, `#resDistanceDisplay`, `#resDistPts`, `#resWindPts`, `#judgeScoresList`, `#resStyleSum`, `#totalPointsDisplay`
 - **Global JS Interface Contracts**:
-  - `window.SkiAudio = { playWind(speed), stopWind(), playTakeoff(), playLanding(), playCheer(), playCrash() }`
-  - `window.SkiUI = { updateHUD(stats), showJudgeScores(details), renderLeaderboard(data) }`
-  - `window.SkiPhysics = { initHill(hill), updateFlight(state, input, dt), calculateScore(distance, stylePoints, wind) }`
-  - `window.SkiGame = { startJump(), reset(), tournamentRound: 1, roundScores: [] }`
+  - `window.SkiPhysics = { initHill(hillConfig), getHillY(x), getHillSlopeAngle(x), xToMeters(x), metersToX(meters), updateFlight(state, input, dt, wind), handleLanding(state, input, groundY), calculateScore(distance, landingStyle, windSpeed) }`
+  - `window.SkiUI = { updateHUD(stats), showJudgeScores(details), renderLeaderboard(data), fetchLeaderboard() }`
+  - `window.SkiGame = { startJump(), reset(), tournamentRound, roundScores, leaderDistance }`
 
-## 5. Parallel Execution Task Mapping
-| Task Key | Developer | Target Files | Wave |
-|---|---|---|---|
-| **SCRUM-143** | Athos | `package.json`, `server.js`, `Dockerfile` | Wave 1 |
-| **SCRUM-144** | Porthos | `public/index.html`, `public/styles.css`, `public/ui.js` | Wave 1 |
-| **SCRUM-145** | Aramis | `public/audio.js`, `public/physics.js`, `public/game.js` | Wave 1 |
-
-*All tasks run in parallel (Wave 1). Integration verified in Wave 2 review.*
+## 6. Cloud Run Subpath & Code Quality Checklist
+- Relative fetch paths ONLY: `fetch('api/hills')`, `fetch('api/leaderboard')`.
+- All DOM queries wrapped in `document.addEventListener('DOMContentLoaded', ...)` or guarded against `null`.
+- Pure HTML5 Canvas & procedural rendering: no external assets, fonts, or images.
