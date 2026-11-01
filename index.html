@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web Chess - Single Player</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app-container">
+    <header class="header">
+      <h1 id="game-title">Web Chess - Single Player</h1>
+      <div class="controls-bar">
+        <label for="difficulty-select" class="control-label">AI Difficulty:
+          <select id="difficulty-select">
+            <option value="greedy" selected>Tactical / Greedy</option>
+            <option value="random">Random</option>
+          </select>
+        </label>
+        <button id="reset-btn" type="button" class="btn">New Game</button>
+      </div>
+    </header>
+
+    <section id="status-panel">
+      <div id="turn-indicator" class="status-turn">Turn: <span id="current-turn">White</span></div>
+      <div id="game-status" class="status-banner" role="status" aria-live="polite">White to move</div>
+    </section>
+
+    <main class="game-area">
+      <aside class="captured-panel captured-top">
+        <div class="captured-label">Captured White Pieces:</div>
+        <div id="captured-white" class="captured-pieces-tray" aria-label="Captured White Pieces"></div>
+      </aside>
+
+      <div class="board-wrapper">
+        <div class="coord-labels-col rank-labels" aria-hidden="true">
+          <span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>
+        </div>
+        <div class="board-main-container">
+          <div id="chessboard" role="grid" aria-label="Chessboard">
+            <!-- 64 squares generated statically for immediate rendering and styling -->
+            <!-- Row 0 (Rank 8) -->
+            <div class="square light" data-row="0" data-col="0" data-square="a8" role="gridcell" aria-label="a8"></div>
+            <div class="square dark" data-row="0" data-col="1" data-square="b8" role="gridcell" aria-label="b8"></div>
+            <div class="square light" data-row="0" data-col="2" data-square="c8" role="gridcell" aria-label="c8"></div>
+            <div class="square dark" data-row="0" data-col="3" data-square="d8" role="gridcell" aria-label="d8"></div>
+            <div class="square light" data-row="0" data-col="4" data-square="e8" role="gridcell" aria-label="e8"></div>
+            <div class="square dark" data-row="0" data-col="5" data-square="f8" role="gridcell" aria-label="f8"></div>
+            <div class="square light" data-row="0" data-col="6" data-square="g8" role="gridcell" aria-label="g8"></div>
+            <div class="square dark" data-row="0" data-col="7" data-square="h8" role="gridcell" aria-label="h8"></div>
+            <!-- Row 1 (Rank 7) -->
+            <div class="square dark" data-row="1" data-col="0" data-square="a7" role="gridcell" aria-label="a7"></div>
+            <div class="square light" data-row="1" data-col="1" data-square="b7" role="gridcell" aria-label="b7"></div>
+            <div class="square dark" data-row="1" data-col="2" data-square="c7" role="gridcell" aria-label="c7"></div>
+            <div class="square light" data-row="1" data-col="3" data-square="d7" role="gridcell" aria-label="d7"></div>
+            <div class="square dark" data-row="1" data-col="4" data-square="e7" role="gridcell" aria-label="e7"></div>
+            <div class="square light" data-row="1" data-col="5" data-square="f7" role="gridcell" aria-label="f7"></div>
+            <div class="square dark" data-row="1" data-col="6" data-square="g7" role="gridcell" aria-label="g7"></div>
+            <div class="square light" data-row="1" data-col="7" data-square="h7" role="gridcell" aria-label="h7"></div>
+            <!-- Row 2 (Rank 6) -->
+            <div class="square light" data-row="2" data-col="0" data-square="a6" role="gridcell" aria-label="a6"></div>
+            <div class="square dark" data-row="2" data-col="1" data-square="b6" role="gridcell" aria-label="b6"></div>
+            <div class="square light" data-row="2" data-col="2" data-square="c6" role="gridcell" aria-label="c6"></div>
+            <div class="square dark" data-row="2" data-col="3" data-square="d6" role="gridcell" aria-label="d6"></div>
+            <div class="square light" data-row="2" data-col="4" data-square="e6" role="gridcell" aria-label="e6"></div>
+            <div class="square dark" data-row="2" data-col="5" data-square="f6" role="gridcell" aria-label="f6"></div>
+            <div class="square light" data-row="2" data-col="6" data-square="g6" role="gridcell" aria-label="g6"></div>
+            <div class="square dark" data-row="2" data-col="7" data-square="h6" role="gridcell" aria-label="h6"></div>
+            <!-- Row 3 (Rank 5) -->
+            <div class="square dark" data-row="3" data-col="0" data-square="a5" role="gridcell" aria-label="a5"></div>
+            <div class="square light" data-row="3" data-col="1" data-square="b5" role="gridcell" aria-label="b5"></div>
+            <div class="square dark" data-row="3" data-col="2" data-square="c5" role="gridcell" aria-label="c5"></div>
+            <div class="square light" data-row="3" data-col="3" data-square="d5" role="gridcell" aria-label="d5"></div>
+            <div class="square dark" data-row="3" data-col="4" data-square="e5" role="gridcell" aria-label="e5"></div>
+            <div class="square light" data-row="3" data-col="5" data-square="f5" role="gridcell" aria-label="f5"></div>
+            <div class="square dark" data-row="3" data-col="6" data-square="g5" role="gridcell" aria-label="g5"></div>
+            <div class="square light" data-row="3" data-col="7" data-square="h5" role="gridcell" aria-label="h5"></div>
+            <!-- Row 4 (Rank 4) -->
+            <div class="square light" data-row="4" data-col="0" data-square="a4" role="gridcell" aria-label="a4"></div>
+            <div class="square dark" data-row="4" data-col="1" data-square="b4" role="gridcell" aria-label="b4"></div>
+            <div class="square light" data-row="4" data-col="2" data-square="c4" role="gridcell" aria-label="c4"></div>
+            <div class="square dark" data-row="4" data-col="3" data-square="d4" role="gridcell" aria-label="d4"></div>
+            <div class="square light" data-row="4" data-col="4" data-square="e4" role="gridcell" aria-label="e4"></div>
+            <div class="square dark" data-row="4" data-col="5" data-square="f4" role="gridcell" aria-label="f4"></div>
+            <div class="square light" data-row="4" data-col="6" data-square="g4" role="gridcell" aria-label="g4"></div>
+            <div class="square dark" data-row="4" data-col="7" data-square="h4" role="gridcell" aria-label="h4"></div>
+            <!-- Row 5 (Rank 3) -->
+            <div class="square dark" data-row="5" data-col="0" data-square="a3" role="gridcell" aria-label="a3"></div>
+            <div class="square light" data-row="5" data-col="1" data-square="b3" role="gridcell" aria-label="b3"></div>
+            <div class="square dark" data-row="5" data-col="2" data-square="c3" role="gridcell" aria-label="c3"></div>
+            <div class="square light" data-row="5" data-col="3" data-square="d3" role="gridcell" aria-label="d3"></div>
+            <div class="square dark" data-row="5" data-col="4" data-square="e3" role="gridcell" aria-label="e3"></div>
+            <div class="square light" data-row="5" data-col="5" data-square="f3" role="gridcell" aria-label="f3"></div>
+            <div class="square dark" data-row="5" data-col="6" data-square="g3" role="gridcell" aria-label="g3"></div>
+            <div class="square light" data-row="5" data-col="7" data-square="h3" role="gridcell" aria-label="h3"></div>
+            <!-- Row 6 (Rank 2) -->
+            <div class="square light" data-row="6" data-col="0" data-square="a2" role="gridcell" aria-label="a2"></div>
+            <div class="square dark" data-row="6" data-col="1" data-square="b2" role="gridcell" aria-label="b2"></div>
+            <div class="square light" data-row="6" data-col="2" data-square="c2" role="gridcell" aria-label="c2"></div>
+            <div class="square dark" data-row="6" data-col="3" data-square="d2" role="gridcell" aria-label="d2"></div>
+            <div class="square light" data-row="6" data-col="4" data-square="e2" role="gridcell" aria-label="e2"></div>
+            <div class="square dark" data-row="6" data-col="5" data-square="f2" role="gridcell" aria-label="f2"></div>
+            <div class="square light" data-row="6" data-col="6" data-square="g2" role="gridcell" aria-label="g2"></div>
+            <div class="square dark" data-row="6" data-col="7" data-square="h2" role="gridcell" aria-label="h2"></div>
+            <!-- Row 7 (Rank 1) -->
+            <div class="square dark" data-row="7" data-col="0" data-square="a1" role="gridcell" aria-label="a1"></div>
+            <div class="square light" data-row="7" data-col="1" data-square="b1" role="gridcell" aria-label="b1"></div>
+            <div class="square dark" data-row="7" data-col="2" data-square="c1" role="gridcell" aria-label="c1"></div>
+            <div class="square light" data-row="7" data-col="3" data-square="d1" role="gridcell" aria-label="d1"></div>
+            <div class="square dark" data-row="7" data-col="4" data-square="e1" role="gridcell" aria-label="e1"></div>
+            <div class="square light" data-row="7" data-col="5" data-square="f1" role="gridcell" aria-label="f1"></div>
+            <div class="square dark" data-row="7" data-col="6" data-square="g1" role="gridcell" aria-label="g1"></div>
+            <div class="square light" data-row="7" data-col="7" data-square="h1" role="gridcell" aria-label="h1"></div>
+          </div>
+          <div class="coord-labels-row file-labels" aria-hidden="true">
+            <span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span>
+          </div>
+        </div>
+      </div>
+
+      <aside class="captured-panel captured-bottom">
+        <div class="captured-label">Captured Black Pieces:</div>
+        <div id="captured-black" class="captured-pieces-tray" aria-label="Captured Black Pieces"></div>
+      </aside>
+    </main>
+
+    <footer class="footer">
+      <p class="footer-tip">Tip: Click a piece to view valid legal moves, then click a target square.</p>
+    </footer>
+  </div>
+
+  <!-- Chess scripts in exact DESIGN.md order -->
+  <script src="chess-engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
