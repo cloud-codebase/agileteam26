@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChessMaster - Single Player Web Chess</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♞</text></svg>">
+</head>
+<body>
+  <div class="app-layout">
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-icon">♞</span>
+        <h1>ChessMaster</h1>
+      </div>
+      <div class="header-status">
+        <div id="game-status" class="status-banner" role="status" aria-live="polite">Ready to Play</div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <!-- Left / Top Panel: Player Info & Opponent (Black) -->
+      <section class="chess-stage">
+        <!-- Opponent Card -->
+        <div class="player-bar opponent-bar">
+          <div class="player-info">
+            <span class="player-avatar" id="opponent-avatar">🤖</span>
+            <div class="player-details">
+              <span class="player-name" id="opponent-name">AI Opponent</span>
+              <span class="player-badge" id="opponent-badge">Black</span>
+            </div>
+          </div>
+          <div class="player-stats">
+            <div id="captured-white" class="captured-pieces" aria-label="Pieces captured by Black"></div>
+            <div class="timer" id="black-timer">10:00</div>
+          </div>
+        </div>
+
+        <!-- Chessboard Grid with Coordinate Notations -->
+        <div class="board-wrapper">
+          <div class="coords coords-left" aria-hidden="true">
+            <span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>
+          </div>
+          <div class="board-middle">
+            <div id="chessboard" class="chessboard" role="grid" aria-label="8x8 Chessboard">
+              <!-- Dynamically populated 8x8 squares or initial fallbacks -->
+            </div>
+            <div class="coords coords-bottom" aria-hidden="true">
+              <span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- User / Self Card (White) -->
+        <div class="player-bar user-bar">
+          <div class="player-info">
+            <span class="player-avatar" id="user-avatar">👤</span>
+            <div class="player-details">
+              <span class="player-name" id="user-name">Player</span>
+              <span class="player-badge" id="user-badge">White</span>
+            </div>
+          </div>
+          <div class="player-stats">
+            <div id="captured-black" class="captured-pieces" aria-label="Pieces captured by White"></div>
+            <div class="timer" id="white-timer">10:00</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Sidebar: Controls, History, State -->
+      <aside class="sidebar-panel">
+        <div class="panel-section control-panel">
+          <h2 class="panel-title">Game Controls</h2>
+          <div class="controls-grid">
+            <div class="control-group">
+              <label for="difficulty-select">AI Difficulty</label>
+              <select id="difficulty-select" class="form-select">
+                <option value="easy">Easy (Casual)</option>
+                <option value="medium" selected>Medium (Tactical)</option>
+                <option value="hard">Hard (Minimax α-β)</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label for="player-color-select">Play As</label>
+              <select id="player-color-select" class="form-select">
+                <option value="white" selected>White (Moves First)</option>
+                <option value="black">Black (AI First)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="action-buttons">
+            <button id="btn-new-game" class="btn btn-primary">
+              <span class="btn-icon">⚡</span> New Game
+            </button>
+            <button id="btn-restart" class="btn btn-secondary">
+              <span class="btn-icon">🔄</span> Restart
+            </button>
+            <button id="btn-undo" class="btn btn-outline">
+              <span class="btn-icon">↩</span> Undo Move
+            </button>
+          </div>
+        </div>
+
+        <div class="panel-section status-panel">
+          <h2 class="panel-title">Match Info</h2>
+          <div class="turn-box">
+            <span class="turn-label">Current Turn:</span>
+            <span id="turn-indicator" class="turn-badge turn-white">White's Turn</span>
+          </div>
+        </div>
+
+        <div class="panel-section history-panel">
+          <div class="history-header">
+            <h2 class="panel-title">Move History</h2>
+            <span class="history-count" id="move-count">0 moves</span>
+          </div>
+          <div class="history-container">
+            <ol id="move-history-list" class="move-history-list">
+              <!-- Dynamically populated notation items (e.g., 1. e4 e5) -->
+            </ol>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Promotion Modal -->
+    <div id="promotion-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="promotion-title">
+      <div class="modal-content">
+        <h3 id="promotion-title">Pawn Promotion</h3>
+        <p>Choose piece to promote your pawn into:</p>
+        <div id="promotion-choices" class="promotion-choices">
+          <button type="button" class="promo-choice-btn" data-piece="queen" aria-label="Promote to Queen">
+            <span class="promo-glyph" data-piece-glyph="queen">♕</span>
+            <span class="promo-label">Queen</span>
+          </button>
+          <button type="button" class="promo-choice-btn" data-piece="rook" aria-label="Promote to Rook">
+            <span class="promo-glyph" data-piece-glyph="rook">♖</span>
+            <span class="promo-label">Rook</span>
+          </button>
+          <button type="button" class="promo-choice-btn" data-piece="bishop" aria-label="Promote to Bishop">
+            <span class="promo-glyph" data-piece-glyph="bishop">♗</span>
+            <span class="promo-label">Bishop</span>
+          </button>
+          <button type="button" class="promo-choice-btn" data-piece="knight" aria-label="Promote to Knight">
+            <span class="promo-glyph" data-piece-glyph="knight">♘</span>
+            <span class="promo-label">Knight</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Script Load Order as specified in DESIGN.md (relative paths for subpath compatibility) -->
+  <script src="chess-engine.js"></script>
+  <script src="ai-player.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
