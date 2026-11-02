@@ -1,0 +1,748 @@
+/* Retro Ski Jumps - Winter CRT & Pixel Arcade Aesthetic */
+
+:root {
+  --bg-dark: #0a0e17;
+  --bg-panel: #111827;
+  --bg-panel-trans: rgba(17, 24, 39, 0.85);
+  --border-neon: #38bdf8;
+  --border-amber: #f59e0b;
+  --text-main: #f1f5f9;
+  --text-dim: #94a3b8;
+  --text-bright: #38bdf8;
+  --text-gold: #fbbf24;
+  --text-green: #34d399;
+  --text-red: #f87171;
+  --scanline-color: rgba(0, 0, 0, 0.25);
+  --crt-glow: rgba(56, 189, 248, 0.2);
+  --font-retro: 'Courier New', Courier, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-x: hidden;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* CRT Scanlines and curvature filter overlay */
+.crt-overlay {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.crt-overlay::before {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%),
+              linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+  z-index: 999;
+  background-size: 100% 3px, 4px 100%;
+  pointer-events: none;
+}
+
+.crt-overlay::after {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0; left: 0; bottom: 0; right: 0;
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  z-index: 998;
+}
+
+/* Top Arcade Header */
+.arcade-header {
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  border-bottom: 2px solid var(--border-neon);
+  box-shadow: 0 4px 20px var(--crt-glow);
+  padding: 8px 16px;
+}
+
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.branding {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.arcade-title {
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #38bdf8;
+  text-shadow: 0 0 8px rgba(56, 189, 248, 0.7), 2px 2px 0 #0369a1;
+  text-transform: uppercase;
+}
+
+.title-sub {
+  color: var(--text-gold);
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+.season-badge {
+  background: #1e1b4b;
+  color: #c7d2fe;
+  border: 1px solid #6366f1;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+/* Quick Hill Meta Header Bar */
+.hill-meta-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid #334155;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.meta-label {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.meta-value {
+  color: #f8fafc;
+  font-weight: bold;
+}
+
+.header-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge-live {
+  background: #ef4444;
+  color: #fff;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: bold;
+  border-radius: 3px;
+  letter-spacing: 1px;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Main Layout Grid */
+.game-container {
+  max-width: 1200px;
+  margin: 12px auto;
+  padding: 0 16px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+/* Canvas Viewport & Overlays Wrapper */
+.viewport-wrapper {
+  position: relative;
+  background: #020617;
+  border: 3px solid #334155;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), 0 0 15px rgba(56, 189, 248, 0.15);
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  max-height: 540px;
+}
+
+#game-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background-color: #0b132b;
+}
+
+/* Retro HUD Top Overlay Bar */
+.hud-top-bar {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.hud-group {
+  display: flex;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.hud-box {
+  background: var(--bg-panel-trans);
+  border: 1px solid #475569;
+  border-radius: 4px;
+  padding: 6px 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  min-width: 100px;
+}
+
+.hud-box.primary {
+  border-color: var(--border-neon);
+}
+
+.hud-box.warning {
+  border-color: var(--border-amber);
+}
+
+.hud-box.alert {
+  border-color: var(--text-red);
+}
+
+.hud-title {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 2px;
+}
+
+.hud-metric {
+  font-size: 18px;
+  font-weight: 900;
+  color: #fff;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.hud-unit {
+  font-size: 11px;
+  font-weight: normal;
+  color: var(--text-dim);
+}
+
+/* Wind Indicator Specifics */
+.wind-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#wind-arrow {
+  display: inline-block;
+  font-size: 18px;
+  transform: rotate(0deg);
+  transition: transform 0.25s ease-out;
+  color: var(--text-gold);
+}
+
+#wind-speed {
+  font-size: 16px;
+  font-weight: bold;
+  color: #f1f5f9;
+}
+
+/* Center Live Distance Meter during Flight */
+.hud-center-flight {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.88);
+  border: 2px solid var(--border-amber);
+  border-radius: 6px;
+  padding: 4px 16px;
+  text-align: center;
+  pointer-events: none;
+  z-index: 11;
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+}
+
+.flight-distance-label {
+  font-size: 9px;
+  color: var(--text-gold);
+  letter-spacing: 1.5px;
+}
+
+#live-distance {
+  font-size: 26px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 1px;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.8);
+}
+
+/* Bottom Flight Status Strip */
+.hud-bottom-bar {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.phase-indicator {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid #38bdf8;
+  padding: 4px 12px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.phase-label {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+#jump-phase {
+  font-size: 13px;
+  font-weight: 900;
+  color: #38bdf8;
+  letter-spacing: 1.5px;
+}
+
+.instructions-tip {
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid #334155;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #cbd5e1;
+}
+
+kbd {
+  background: #334155;
+  border: 1px solid #64748b;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 10px;
+  color: #f8fafc;
+  box-shadow: 0 2px 0 #0f172a;
+}
+
+/* Action & Control Console */
+.control-console {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.console-left, .console-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.control-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.control-item label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.retro-select {
+  background: #1e293b;
+  color: #f8fafc;
+  border: 1px solid #475569;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  min-width: 220px;
+}
+
+.retro-select:focus {
+  border-color: var(--border-neon);
+  box-shadow: 0 0 6px var(--crt-glow);
+}
+
+.retro-input {
+  background: #1e293b;
+  color: #f8fafc;
+  border: 1px solid #475569;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  width: 140px;
+}
+
+.retro-input:focus {
+  border-color: var(--border-neon);
+}
+
+/* Action Buttons */
+.btn-action {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 8px 18px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease-in-out;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+  color: #fff;
+  border-color: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(180deg, #0ea5e9 0%, #0284c7 100%);
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.7);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+}
+
+.btn-secondary {
+  background: #1e293b;
+  color: #cbd5e1;
+  border-color: #475569;
+}
+
+.btn-secondary:hover {
+  background: #334155;
+  color: #fff;
+}
+
+/* Secondary Panels Grid (Leaderboard + Tournament Info) */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+@media (max-width: 900px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel-card {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #1e293b;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+}
+
+.panel-title {
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: #38bdf8;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Leaderboard Retro Table */
+.retro-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.retro-table th {
+  text-align: left;
+  padding: 6px 8px;
+  color: var(--text-dim);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #1e293b;
+}
+
+.retro-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #182234;
+  color: #e2e8f0;
+}
+
+.retro-table tr:hover {
+  background: rgba(56, 189, 248, 0.05);
+}
+
+.retro-table td.rank-cell {
+  font-weight: 900;
+  color: var(--text-gold);
+  width: 32px;
+}
+
+.retro-table td.points-cell {
+  font-weight: bold;
+  color: var(--text-green);
+  text-align: right;
+}
+
+.retro-table td.distance-cell {
+  text-align: right;
+  font-weight: bold;
+}
+
+/* Hill Details Guide Panel */
+.hill-profile-specs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.spec-box {
+  background: #1e293b;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #334155;
+}
+
+.spec-title {
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+.spec-val {
+  font-size: 14px;
+  font-weight: bold;
+  color: #f1f5f9;
+  margin-top: 2px;
+}
+
+.how-to-play-list {
+  list-style: none;
+  font-size: 11px;
+  color: #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.how-to-play-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.step-badge {
+  background: #0284c7;
+  color: #fff;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+/* Modals (Scoring & Round Results) */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-card {
+  background: #0f172a;
+  border: 2px solid var(--border-neon);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 520px;
+  box-shadow: 0 0 30px rgba(56, 189, 248, 0.4);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: modalPop 0.2s ease-out;
+}
+
+@keyframes modalPop {
+  0% { transform: scale(0.92); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+  border-bottom: 1px solid #334155;
+  padding-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-title {
+  color: var(--text-bright);
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.judge-scores-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  text-align: center;
+  margin: 6px 0;
+}
+
+.judge-box {
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 4px;
+  padding: 8px 4px;
+}
+
+.judge-box.dropped {
+  opacity: 0.4;
+  text-decoration: line-through;
+  border-color: #991b1b;
+}
+
+.judge-name {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.judge-val {
+  font-size: 16px;
+  font-weight: bold;
+  color: #f1f5f9;
+  margin-top: 2px;
+}
+
+.score-breakdown-table {
+  background: #1e293b;
+  border-radius: 4px;
+  padding: 10px 14px;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.score-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.score-total-row {
+  border-top: 1px solid #475569;
+  padding-top: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--text-gold);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Footer status */
+.arcade-footer {
+  text-align: center;
+  padding: 12px;
+  color: var(--text-dim);
+  font-size: 11px;
+  border-top: 1px solid #1e293b;
+  margin-top: auto;
+}

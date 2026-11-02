@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ski Jumps - Retro Arcade Deluxe Ski Jumping</title>
+  <!-- Relative stylesheet routing (Subpath safe for Cloud Run /demo/ deployment) -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="crt-overlay">
+    <!-- Top Arcade Bar -->
+    <header class="arcade-header">
+      <div class="header-inner">
+        <div class="branding">
+          <span class="arcade-title">🎿 SKI JUMPS DELUXE</span>
+          <span class="title-sub">RETRO 1998</span>
+          <span class="season-badge">WORLD CUP SPRINT 1.0</span>
+        </div>
+
+        <div class="hill-meta-bar">
+          <div class="meta-item">
+            <span class="meta-label">HILL:</span>
+            <span class="meta-value" id="hill-name">Zakopane (Wielka Krokiew)</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">K-POINT:</span>
+            <span class="meta-value" id="hill-k-point">120m</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">HS-POINT:</span>
+            <span class="meta-value" id="hill-hs-point">140m</span>
+          </div>
+        </div>
+
+        <div class="header-status">
+          <span class="badge-live">LIVE BROADCAST</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Game Container -->
+    <main class="game-container">
+      <!-- Canvas Viewport with Retro HUD Overlays -->
+      <div class="viewport-wrapper">
+        <canvas id="game-canvas" width="960" height="540"></canvas>
+
+        <!-- Top HUD Metrics Overlay -->
+        <div class="hud-top-bar">
+          <div class="hud-group">
+            <div class="hud-box warning">
+              <div class="hud-title">WIND SENSOR</div>
+              <div class="hud-metric wind-indicator">
+                <span id="wind-arrow">➔</span>
+                <span id="wind-speed">+1.4 m/s</span>
+              </div>
+            </div>
+
+            <div class="hud-box primary">
+              <div class="hud-title">INRUN SPEED</div>
+              <div class="hud-metric">
+                <span id="inrun-speed">0.0</span>
+                <span class="hud-unit">km/h</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="hud-group">
+            <div class="hud-box">
+              <div class="hud-title">GATE</div>
+              <div class="hud-metric">
+                <span id="gate-indicator">12</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Center Flight Distance Tracker -->
+        <div class="hud-center-flight" id="flight-distance-display">
+          <div class="flight-distance-label">LIVE DISTANCE</div>
+          <div id="live-distance">0.0 m</div>
+        </div>
+
+        <!-- Bottom Phase & Instructions Bar -->
+        <div class="hud-bottom-bar">
+          <div class="phase-indicator">
+            <span class="phase-label">STATUS:</span>
+            <span id="jump-phase">READY</span>
+          </div>
+
+          <div class="instructions-tip">
+            <kbd>SPACE</kbd> / Click: <strong>Start Inrun ➔ Takeoff ➔ Telemark Landing</strong> | <kbd>▲</kbd> <kbd>▼</kbd>: Aerodynamic Pitch
+          </div>
+        </div>
+      </div>
+
+      <!-- Action & Console Bar -->
+      <section class="control-console">
+        <div class="console-left">
+          <div class="control-item">
+            <label for="hill-select">Select Competition Hill</label>
+            <select id="hill-select" class="retro-select">
+              <!-- Dynamically populated from HillData, with hardcoded fallbacks -->
+              <option value="zakopane">🇵🇱 Zakopane K-120 (Large Hill)</option>
+              <option value="planica">🇸🇮 Planica K-185 (Ski Flying)</option>
+              <option value="wisla">🇵🇱 Wisła Malinka K-120 (Technical)</option>
+              <option value="oberstdorf">🇩🇪 Oberstdorf K-120 (Four Hills)</option>
+            </select>
+          </div>
+
+          <div class="control-item">
+            <label for="player-name-input">Jumper Name</label>
+            <input type="text" id="player-name-input" class="retro-input" value="Adam M." maxlength="16" placeholder="Your name">
+          </div>
+        </div>
+
+        <div class="console-right">
+          <button id="btn-jump-action" class="btn-action btn-primary" type="button">
+            🚀 START JUMP
+          </button>
+          <button id="btn-reset" class="btn-action btn-secondary" type="button">
+            ↺ RESET
+          </button>
+        </div>
+      </section>
+
+      <!-- Secondary Info Grid: Leaderboards and Hill Specs -->
+      <section class="dashboard-grid">
+        <!-- Tournament Leaderboard -->
+        <div class="panel-card">
+          <div class="panel-header">
+            <div class="panel-title">🏆 World Cup High Scores</div>
+            <span id="leaderboard-hill-tag" style="font-size: 11px; color: var(--text-dim);">All Hills</span>
+          </div>
+          <div style="overflow-x: auto;">
+            <table class="retro-table" id="leaderboard-table">
+              <thead>
+                <tr>
+                  <th>RK</th>
+                  <th>Jumper</th>
+                  <th>Hill</th>
+                  <th style="text-align: right;">Distance</th>
+                  <th style="text-align: right;">Total Pts</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboard-body">
+                <tr><td colspan="5" style="text-align: center; color: var(--text-dim);">Loading leaderboard...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Hill Profile Specs & Guide -->
+        <div class="panel-card">
+          <div class="panel-header">
+            <div class="panel-title">📐 Hill Profile & Instructions</div>
+          </div>
+          <div class="hill-profile-specs">
+            <div class="spec-box">
+              <div class="spec-title">K-Point (Base 60/120p)</div>
+              <div class="spec-val" id="spec-k-point">120 m</div>
+            </div>
+            <div class="spec-box">
+              <div class="spec-title">Hill Size (HS)</div>
+              <div class="spec-val" id="spec-hs-point">140 m</div>
+            </div>
+            <div class="spec-box">
+              <div class="spec-title">Hill Record</div>
+              <div class="spec-val" id="spec-record">147.0 m</div>
+            </div>
+            <div class="spec-box">
+              <div class="spec-title">Record Holder</div>
+              <div class="spec-val" id="spec-record-holder">Yukiya Sato</div>
+            </div>
+          </div>
+
+          <ul class="how-to-play-list">
+            <li><span class="step-badge">1</span> Press <strong>START JUMP</strong> to mount the inrun beam.</li>
+            <li><span class="step-badge">2</span> Time <kbd>SPACE</kbd> right at the takeoff edge for max vertical lift.</li>
+            <li><span class="step-badge">3</span> Adjust pitch in air with <kbd>▲</kbd>/<kbd>▼</kbd> or mouse to ride wind cushions.</li>
+            <li><span class="step-badge">4</span> Hit <kbd>SPACE</kbd> upon touching the snow for a telemark style landing (+20 judge pts)!</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <!-- Round Scoring / Judges Modal -->
+    <div class="modal-overlay" id="score-modal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <span class="modal-title">OFFICIAL JUMP RESULT</span>
+          <span id="modal-hill-name" style="font-size: 12px; color: var(--text-gold);">Zakopane K-120</span>
+        </div>
+
+        <div style="font-size: 12px; color: var(--text-dim);">
+          STYLE JUDGES (HIGHEST & LOWEST ELIMINATED):
+        </div>
+
+        <div class="judge-scores-grid" id="judge-scores">
+          <div class="judge-box"><div class="judge-name">J1 (AUT)</div><div class="judge-val">19.0</div></div>
+          <div class="judge-box"><div class="judge-name">J2 (NOR)</div><div class="judge-val">18.5</div></div>
+          <div class="judge-box"><div class="judge-name">J3 (POL)</div><div class="judge-val">19.5</div></div>
+          <div class="judge-box"><div class="judge-name">J4 (GER)</div><div class="judge-val">19.0</div></div>
+          <div class="judge-box"><div class="judge-name">J5 (FIN)</div><div class="judge-val">18.5</div></div>
+        </div>
+
+        <div class="score-breakdown-table">
+          <div class="score-row">
+            <span>Jump Distance:</span>
+            <span id="modal-distance-text" style="font-weight: bold; color: #fff;">134.5 m</span>
+          </div>
+          <div class="score-row">
+            <span>Distance Points:</span>
+            <span id="distance-score">86.1 pts</span>
+          </div>
+          <div class="score-row">
+            <span>Judge Style Points:</span>
+            <span id="modal-judge-score">56.5 pts</span>
+          </div>
+          <div class="score-row">
+            <span>Wind Compensation:</span>
+            <span id="modal-wind-comp">+1.2 pts</span>
+          </div>
+          <div class="score-row score-total-row">
+            <span>TOTAL ROUND SCORE:</span>
+            <span id="total-points">143.8 pts</span>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button id="modal-close-btn" class="btn-action btn-primary" type="button">NEXT JUMP</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Retro Status Footer -->
+    <footer class="arcade-footer">
+      Ski Jumps Retro Edition © 1998-2025 • FIS Certified Virtual Simulation • Built with Canvas 2D & Web Audio
+    </footer>
+  </div>
+
+  <!-- Relative script tags (Never leading slashes!) -->
+  <script src="js/hills.js"></script>
+  <!-- Future wave scripts are referenced defensively if present -->
+  <script src="js/physics.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/tournament.js"></script>
+  <script src="js/game.js"></script>
+
+  <!-- UI Hook & Initialization Logic for Sprint 1 Foundation -->
+  <script>
+    (function () {
+      'use strict';
+
+      document.addEventListener('DOMContentLoaded', function () {
+        var hillSelect = document.getElementById('hill-select');
+        var hillNameEl = document.getElementById('hill-name');
+        var hillKPointEl = document.getElementById('hill-k-point');
+        var hillHsPointEl = document.getElementById('hill-hs-point');
+        var specKPointEl = document.getElementById('spec-k-point');
+        var specHsPointEl = document.getElementById('spec-hs-point');
+        var specRecordEl = document.getElementById('spec-record');
+        var specRecordHolderEl = document.getElementById('spec-record-holder');
+        var leaderboardBody = document.getElementById('leaderboard-body');
+        var modalCloseBtn = document.getElementById('modal-close-btn');
+        var scoreModal = document.getElementById('score-modal');
+        var btnJump = document.getElementById('btn-jump-action');
+        var btnReset = document.getElementById('btn-reset');
+
+        // Function to update hill UI based on selected hill
+        function updateHillUI(hillId) {
+          if (!window.HillData || !window.HillData.get) return;
+          var hill = window.HillData.get(hillId);
+          if (!hill) return;
+
+          if (hillNameEl) hillNameEl.textContent = hill.name;
+          if (hillKPointEl) hillKPointEl.textContent = hill.kPoint + 'm';
+          if (hillHsPointEl) hillHsPointEl.textContent = hill.hsPoint + 'm';
+          if (specKPointEl) specKPointEl.textContent = hill.kPoint + ' m';
+          if (specHsPointEl) specHsPointEl.textContent = hill.hsPoint + ' m';
+          if (specRecordEl) specRecordEl.textContent = hill.record + ' m';
+          if (specRecordHolderEl) specRecordHolderEl.textContent = hill.recordHolder || 'World Record';
+
+          loadLeaderboard(hillId);
+        }
+
+        // Leaderboard loader using relative fetch ('api/leaderboard' without leading slash)
+        function loadLeaderboard(hillId) {
+          var url = 'api/leaderboard' + (hillId ? '?hillId=' + encodeURIComponent(hillId) : '');
+          fetch(url)
+            .then(function (res) {
+              if (!res.ok) throw new Error('Network response was not ok');
+              return res.json();
+            })
+            .then(function (data) {
+              if (!leaderboardBody) return;
+              if (!Array.isArray(data) || data.length === 0) {
+                leaderboardBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-dim);">No scores recorded yet. Be the first!</td></tr>';
+                return;
+              }
+              var html = '';
+              data.forEach(function (entry, index) {
+                var medal = index === 0 ? '🥇 ' : (index === 1 ? '🥈 ' : (index === 2 ? '🥉 ' : ''));
+                html += '<tr>' +
+                  '<td class="rank-cell">' + medal + (index + 1) + '</td>' +
+                  '<td>' + (entry.playerName || 'Anonymous') + '</td>' +
+                  '<td>' + (entry.hillName || entry.hillId) + '</td>' +
+                  '<td class="distance-cell">' + Number(entry.distance || 0).toFixed(1) + 'm</td>' +
+                  '<td class="points-cell">' + Number(entry.totalPoints || 0).toFixed(1) + '</td>' +
+                  '</tr>';
+              });
+              leaderboardBody.innerHTML = html;
+            })
+            .catch(function (err) {
+              console.warn('[SkiJumps] Could not fetch leaderboard:', err);
+              if (leaderboardBody) {
+                leaderboardBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-dim);">Offline mode — Local scores only</td></tr>';
+              }
+            });
+        }
+
+        // Hill selection listener
+        if (hillSelect) {
+          hillSelect.addEventListener('change', function (e) {
+            updateHillUI(e.target.value);
+            // Notify game engine if initialized
+            if (window.SkiGame && typeof window.SkiGame.setHill === 'function') {
+              window.SkiGame.setHill(e.target.value);
+            }
+          });
+        }
+
+        // Modal close handler
+        if (modalCloseBtn && scoreModal) {
+          modalCloseBtn.addEventListener('click', function () {
+            scoreModal.classList.remove('active');
+          });
+        }
+
+        // Fallback basic canvas background until Wave 1 physics/renderer mounts
+        var canvas = document.getElementById('game-canvas');
+        if (canvas) {
+          var ctx = canvas.getContext('2d');
+          if (ctx) {
+            // Draw placeholder winter mountain backdrop
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = 'bold 20px "Courier New", monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('⛷️ SKI JUMPS DELUXE 1998', canvas.width / 2, canvas.height / 2 - 20);
+            ctx.font = '14px "Courier New", monospace';
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillText('Engine Ready • Press START JUMP to begin competition', canvas.width / 2, canvas.height / 2 + 15);
+          }
+        }
+
+        // Initial fetch
+        if (hillSelect) {
+          updateHillUI(hillSelect.value);
+        } else {
+          loadLeaderboard();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
