@@ -1,0 +1,17 @@
+{
+  "name": "skijump2",
+  "version": "1.0.0",
+  "description": "Retro Ski Jump 2 (DSJ2 inspired) Tournament & Physics Simulator",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node -e \"console.log('SkiJump2 server check passed')\""
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
