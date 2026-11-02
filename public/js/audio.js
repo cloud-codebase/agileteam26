@@ -1,8 +1,10 @@
 /**
  * audio.js - Procedural Web Audio API Sound Effects Engine
- * Sprint 1.0 (SCRUM-174)
+ * Sprint 1.0 (SCRUM-174) & Sprint 2.0 (SCRUM-178)
  *
  * Implements 100% synthetic audio for:
+ * - FIS Electronic Starting Gate Beeps (playGateBeep('red'|'yellow'|'green')) [SCRUM-178]
+ * - Mechanical Gate Latch & Push-off Release (playGateRelease()) [SCRUM-178]
  * - Wind gusts & ambient winter breeze
  * - Ski friction sliding whoosh on inrun tracks (speed-modulated)
  * - Takeoff impulse & launch whoosh
@@ -103,6 +105,126 @@
         this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.7, this.ctx.currentTime);
       }
       return this.isMuted;
+    },
+
+    /**
+     * Authentic FIS electronic starting gate beeps (SCRUM-178).
+     * Short 440Hz tone on Red and Yellow ('attention' / 'wait').
+     * High 880Hz confirmation beep on Green ('go' / 'gate clear').
+     * @param {string} type - 'red' | 'yellow' | 'green'
+     */
+    playGateBeep: function (type) {
+      this.init();
+      if (!this.ctx || this.isMuted) return;
+
+      var now = this.ctx.currentTime;
+      var isGreen = (type === 'green');
+
+      // Frequency: 880Hz for green clearance, 440Hz for red/yellow preparation
+      var freq = isGreen ? 880 : 440;
+      var duration = isGreen ? 0.22 : 0.12;
+
+      var osc = this.ctx.createOscillator();
+      var gain = this.ctx.createGain();
+
+      // Clean electronic square/sine blend for classic broadcast stadium timer beep
+      osc.type = isGreen ? 'sine' : 'triangle';
+      osc.frequency.setValueAtTime(freq, now);
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(isGreen ? 0.32 : 0.24, now + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+
+      osc.start(now);
+      osc.stop(now + duration + 0.02);
+
+      // Add high overtone for green to give that crisp FIS World Cup timing chime
+      if (isGreen) {
+        var overtone = this.ctx.createOscillator();
+        var overGain = this.ctx.createGain();
+        overtone.type = 'sine';
+        overtone.frequency.setValueAtTime(1760, now);
+
+        overGain.gain.setValueAtTime(0.001, now);
+        overGain.gain.linearRampToValueAtTime(0.12, now + 0.015);
+        overGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+        overtone.connect(overGain);
+        overGain.connect(this.masterGain);
+
+        overtone.start(now);
+        overtone.stop(now + 0.20);
+      }
+    },
+
+    /**
+     * Mechanical gate latch release & skier push-off sound (SCRUM-178).
+     * Combination of metallic click, solenoid release clack, and snow edge crunch.
+     */
+    playGateRelease: function () {
+      this.init();
+      if (!this.ctx || this.isMuted) return;
+
+      var now = this.ctx.currentTime;
+
+      // 1. Sharp metallic spring latch click
+      var clickOsc = this.ctx.createOscillator();
+      var clickGain = this.ctx.createGain();
+      clickOsc.type = 'sawtooth';
+      clickOsc.frequency.setValueAtTime(1400, now);
+      clickOsc.frequency.exponentialRampToValueAtTime(220, now + 0.06);
+
+      clickGain.gain.setValueAtTime(0.35, now);
+      clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+      clickOsc.connect(clickGain);
+      clickGain.connect(this.masterGain);
+
+      clickOsc.start(now);
+      clickOsc.stop(now + 0.08);
+
+      // 2. Mechanical clunk resonance (gate bar lifting)
+      var clunkOsc = this.ctx.createOscillator();
+      var clunkGain = this.ctx.createGain();
+      clunkOsc.type = 'triangle';
+      clunkOsc.frequency.setValueAtTime(320, now + 0.02);
+      clunkOsc.frequency.exponentialRampToValueAtTime(95, now + 0.14);
+
+      clunkGain.gain.setValueAtTime(0.001, now);
+      clunkGain.gain.setValueAtTime(0.4, now + 0.02);
+      clunkGain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+
+      clunkOsc.connect(clunkGain);
+      clunkGain.connect(this.masterGain);
+
+      clunkOsc.start(now + 0.02);
+      clunkOsc.stop(now + 0.18);
+
+      // 3. Crisp snow push-off scrape (from noise buffer)
+      if (this.noiseBuffer) {
+        var scrape = this.ctx.createBufferSource();
+        scrape.buffer = this.noiseBuffer;
+
+        var scrapeFilter = this.ctx.createBiquadFilter();
+        scrapeFilter.type = 'bandpass';
+        scrapeFilter.frequency.setValueAtTime(1200, now + 0.01);
+        scrapeFilter.Q.setValueAtTime(2.5, now + 0.01);
+
+        var scrapeGain = this.ctx.createGain();
+        scrapeGain.gain.setValueAtTime(0.001, now);
+        scrapeGain.gain.linearRampToValueAtTime(0.28, now + 0.03);
+        scrapeGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+        scrape.connect(scrapeFilter);
+        scrapeFilter.connect(scrapeGain);
+        scrapeGain.connect(this.masterGain);
+
+        scrape.start(now);
+        scrape.stop(now + 0.16);
+      }
     },
 
     /**

@@ -1,14 +1,21 @@
 /**
  * game.js - Master Game Orchestrator & State Loop
- * Sprint 1.0 (SCRUM-174)
+ * Sprint 1.0 (SCRUM-174) & Sprint 2.0 (SCRUM-178)
  *
  * Integrates:
  * - window.SkiPhysics (kinematics, aerodynamics, collision)
- * - window.SkiRenderer (procedural canvas rendering, CRT, stadium)
- * - window.SkiAudio (Web Audio SFX: inrun, flight wind, takeoff, landing, cheering, fanfare)
+ * - window.SkiRenderer (procedural canvas rendering, CRT, stadium, gate lift)
+ * - window.SkiAudio (Web Audio SFX: gate beeps, release clack, inrun, flight wind, takeoff, landing, cheering, fanfare)
  * - window.SkiTournament (FIS competition scoring, 5 judges, AI competitors, leaderboard)
- * - DOM HUD elements (speedometer, wind sensor, distance ticker, round modals)
+ * - DOM HUD elements (FIS lights #gate-signal-lights, #gate-prompt-banner, #gate-bar-level, speedometer, wind sensor)
  * - Keyboard (Space, Arrow Up/Down, W/S) & Mouse/Touch controls
+ *
+ * Sprint 2.0 State Machine Orchestration (SCRUM-178):
+ * - Sequence on resetJump:
+ *   1. GATE_WAIT (Red signal active, 0.6s countdown) - "WAITING FOR WIND CLEARANCE..."
+ *   2. GATE_READY (Yellow signal active, 0.6s countdown) - "ATTENTION: JUMPER ON BAR"
+ *   3. GATE_CLEAR (Green signal active) - "GREEN LIGHT - PRESS SPACE OR CLICK TO START"
+ * - Audio synchronization: FIS gate beeps at each phase transition, mechanical gate release on push-off.
  */
 
 (function (window) {
@@ -31,6 +38,12 @@
     lastTime: 0,
     hasEvaluatedLanding: false,
     latestResult: null,
+
+    // Starting Gate State Machine (SCRUM-178): 'GATE_WAIT' | 'GATE_READY' | 'GATE_CLEAR' | 'IN_FLIGHT'
+    gateState: 'GATE_CLEAR',
+    gateTimer: 0,
+    gateWaitDuration: 0.6,   // seconds on Red
+    gateReadyDuration: 0.6,  // seconds on Yellow
 
     // DOM Element cache
     dom: {},
@@ -66,7 +79,15 @@
         totalPoints: document.getElementById('total-points'),
         judgeScoresGrid: document.getElementById('judge-scores'),
         modalCloseBtn: document.getElementById('modal-close-btn'),
-        leaderboardBody: document.getElementById('leaderboard-body')
+        leaderboardBody: document.getElementById('leaderboard-body'),
+
+        // FIS Starting Gate HUD elements (SCRUM-177 / SCRUM-178)
+        gateSignalLights: document.getElementById('gate-signal-lights'),
+        lightRed: document.getElementById('light-red'),
+        lightYellow: document.getElementById('light-yellow'),
+        lightGreen: document.getElementById('light-green'),
+        gatePromptBanner: document.getElementById('gate-prompt-banner'),
+        gateBarLevel: document.getElementById('gate-bar-level')
       };
 
       this.canvas = this.dom.canvas;
@@ -92,6 +113,9 @@
 
       // Bind input events
       this._bindInputs();
+
+      // Start with starting gate readiness sequence
+      this._startGateSequence();
 
       // Start RAF loop
       this.isRunning = true;
@@ -151,8 +175,126 @@
         this.dom.scoreModal.classList.remove('active');
       }
 
+      // Start starting gate preparation sequence: GATE_WAIT -> GATE_READY -> GATE_CLEAR
+      this._startGateSequence();
+
       this._updateActionButton();
       this._updateHUD();
+    },
+
+    /**
+     * Initiates the FIS gate preparation sequence (SCRUM-178)
+     */
+    _startGateSequence: function () {
+      this.gateState = 'GATE_WAIT';
+      this.gateTimer = 0;
+
+      this._applyGateUIState('GATE_WAIT');
+
+      if (window.SkiAudio) {
+        window.SkiAudio.playGateBeep('red');
+      }
+    },
+
+    /**
+     * Updates the gate state countdown during the RAF loop
+     */
+    _updateGateStateMachine: function (dt) {
+      if (!window.SkiPhysics) return;
+      var state = window.SkiPhysics.getState();
+      var phase = state ? state.phase : 'GATE';
+
+      // Only advance gate sequence while still at starting gate
+      if (phase !== 'GATE') {
+        if (this.gateState !== 'IN_FLIGHT') {
+          this.gateState = 'IN_FLIGHT';
+          this._applyGateUIState('IN_FLIGHT');
+        }
+        return;
+      }
+
+      if (this.gateState === 'GATE_WAIT') {
+        this.gateTimer += dt;
+        if (this.gateTimer >= this.gateWaitDuration) {
+          this.gateState = 'GATE_READY';
+          this.gateTimer = 0;
+          this._applyGateUIState('GATE_READY');
+          if (window.SkiAudio) {
+            window.SkiAudio.playGateBeep('yellow');
+          }
+        }
+      } else if (this.gateState === 'GATE_READY') {
+        this.gateTimer += dt;
+        if (this.gateTimer >= this.gateReadyDuration) {
+          this.gateState = 'GATE_CLEAR';
+          this.gateTimer = 0;
+          this._applyGateUIState('GATE_CLEAR');
+          if (window.SkiAudio) {
+            window.SkiAudio.playGateBeep('green');
+          }
+        }
+      }
+    },
+
+    /**
+     * Synchronizes DOM lights, prompt banner, and bar level with gate state (SCRUM-178)
+     */
+    _applyGateUIState: function (stateName) {
+      var d = this.dom;
+
+      // Helper to set active light class
+      function setLights(red, yellow, green) {
+        if (d.lightRed) d.lightRed.classList.toggle('active', red);
+        if (d.lightYellow) d.lightYellow.classList.toggle('active', yellow);
+        if (d.lightGreen) d.lightGreen.classList.toggle('active', green);
+      }
+
+      // Helper to update banner
+      function setBanner(show, cssClass, icon, text) {
+        if (!d.gatePromptBanner) return;
+        if (!show) {
+          d.gatePromptBanner.classList.add('hidden');
+          return;
+        }
+        d.gatePromptBanner.classList.remove('hidden', 'state-red', 'state-yellow', 'state-green');
+        d.gatePromptBanner.classList.add(cssClass);
+        var iconEl = d.gatePromptBanner.querySelector('.gate-prompt-icon');
+        var textEl = d.gatePromptBanner.querySelector('.gate-prompt-text');
+        if (iconEl) iconEl.textContent = icon;
+        if (textEl) textEl.textContent = text;
+      }
+
+      switch (stateName) {
+        case 'GATE_WAIT':
+          setLights(true, false, false);
+          setBanner(true, 'state-red', '🔴', 'WAITING FOR WIND CLEARANCE...');
+          if (d.gateBarLevel) d.gateBarLevel.textContent = 'BAR #12 (LOCKED)';
+          if (d.jumpPhase) d.jumpPhase.textContent = 'GATE: RED LIGHT (WAIT)';
+          break;
+
+        case 'GATE_READY':
+          setLights(false, true, false);
+          setBanner(true, 'state-yellow', '🟡', 'ATTENTION: JUMPER ON BAR');
+          if (d.gateBarLevel) d.gateBarLevel.textContent = 'BAR #12 (PREPARE)';
+          if (d.jumpPhase) d.jumpPhase.textContent = 'GATE: YELLOW (ATTENTION)';
+          break;
+
+        case 'GATE_CLEAR':
+          setLights(false, false, true);
+          setBanner(true, 'state-green', '🟢', 'GREEN LIGHT - PRESS SPACE OR CLICK TO START');
+          if (d.gateBarLevel) d.gateBarLevel.textContent = 'BAR #12 (CLEARED)';
+          if (d.jumpPhase) d.jumpPhase.textContent = 'GATE: GREEN LIGHT (GO!)';
+          break;
+
+        case 'IN_FLIGHT':
+        default:
+          setLights(false, false, false);
+          setBanner(false);
+          if (d.gateBarLevel) d.gateBarLevel.textContent = 'BAR #12 (IN USE)';
+          break;
+      }
+
+      this._updateActionButton();
     },
 
     /**
@@ -170,11 +312,24 @@
 
       switch (state.phase) {
         case 'GATE':
+          // If gate countdown is still in GATE_WAIT or GATE_READY, quick press clears gate immediately
+          if (this.gateState !== 'GATE_CLEAR') {
+            this.gateState = 'GATE_CLEAR';
+            this._applyGateUIState('GATE_CLEAR');
+            if (window.SkiAudio) {
+              window.SkiAudio.playGateBeep('green');
+            }
+          }
+
+          // Mechanical latch release & push-off sound
+          if (window.SkiAudio) {
+            window.SkiAudio.playGateRelease();
+          }
+
           // Jumper begins descent
           window.SkiPhysics.startInrun();
-          if (window.SkiAudio) {
-            window.SkiAudio.playClick();
-          }
+          this.gateState = 'IN_FLIGHT';
+          this._applyGateUIState('IN_FLIGHT');
           break;
 
         case 'INRUN':
@@ -314,6 +469,9 @@
 
       // Cap delta time to prevent instability
       if (dt > 0.1) dt = 0.1;
+
+      // Update Gate State Countdown (SCRUM-178)
+      this._updateGateStateMachine(dt);
 
       // 1. Update Physics
       var physicsState = null;
@@ -480,8 +638,16 @@
 
       switch (phase) {
         case 'GATE':
-          this.dom.btnJump.textContent = '🚀 START INRUN';
-          this.dom.btnJump.className = 'btn-action btn-primary';
+          if (this.gateState === 'GATE_WAIT') {
+            this.dom.btnJump.textContent = '🔴 WAIT FOR GREEN';
+            this.dom.btnJump.className = 'btn-action btn-secondary';
+          } else if (this.gateState === 'GATE_READY') {
+            this.dom.btnJump.textContent = '🟡 GET READY...';
+            this.dom.btnJump.className = 'btn-action btn-warning';
+          } else {
+            this.dom.btnJump.textContent = '🚀 START INRUN';
+            this.dom.btnJump.className = 'btn-action btn-primary';
+          }
           break;
         case 'INRUN':
           this.dom.btnJump.textContent = '⚡ JUMP NOW!';
@@ -538,7 +704,11 @@
       // Status text
       if (this.dom.jumpPhase && s) {
         var phaseText = s.phase;
-        if (s.phase === 'INRUN') {
+        if (s.phase === 'GATE') {
+          if (this.gateState === 'GATE_WAIT') phaseText = 'GATE: RED LIGHT (WAIT)';
+          else if (this.gateState === 'GATE_READY') phaseText = 'GATE: YELLOW (ATTENTION)';
+          else phaseText = 'GATE: GREEN LIGHT (GO!)';
+        } else if (s.phase === 'INRUN') {
           phaseText = 'INRUN ACCELERATING';
         } else if (s.phase === 'FLIGHT') {
           phaseText = 'SOARING • ' + (s.takeoffAccuracyText || 'IN FLIGHT');
