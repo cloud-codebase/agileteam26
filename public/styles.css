@@ -294,6 +294,44 @@ body {
   color: #fff;
 }
 
+/* Takeoff Timing Banner in HUD (DESIGN.md #takeoffFeedback) */
+.takeoff-feedback-banner {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  justify-self: center;
+  margin-top: 4px;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-family: var(--font-retro);
+  font-size: 12px;
+  text-align: center;
+  pointer-events: auto;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.8);
+  animation: pulse 0.5s ease-out;
+}
+
+.banner-perfect {
+  background: rgba(39, 174, 96, 0.9);
+  border: 2px solid #2ed573;
+  color: #fff;
+  text-shadow: 0 0 6px #2ed573;
+}
+
+.banner-early {
+  background: rgba(230, 126, 34, 0.9);
+  border: 2px solid #f1c40f;
+  color: #fff;
+  text-shadow: 0 0 6px #f1c40f;
+}
+
+.banner-late {
+  background: rgba(192, 57, 43, 0.9);
+  border: 2px solid #ff4757;
+  color: #fff;
+  text-shadow: 0 0 6px #ff4757;
+}
+
 .wind-gauge-box {
   grid-column: 3;
   grid-row: 1;

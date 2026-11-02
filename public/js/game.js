@@ -1,7 +1,8 @@
 /**
  * game.js - Canvas Game Loop, Camera Tracking & Retro DSJ2 Visuals
  * 60 FPS animation loop, dynamic camera lerp, procedural pixel winter terrain,
- * pine trees, crowd stands, K-point / HS-point lines, V-style skier sprite, and snow particles.
+ * pine trees, crowd stands, K-point / HS-point lines, V-style skier sprite,
+ * snow particles, takeoff timing feedback banner, and gate beam indicator.
  */
 (function() {
   'use strict';
@@ -47,9 +48,19 @@
         telemark: false
       };
 
-      // Callbacks for phase changes
+      // Callbacks for phase changes and takeoff feedback
       this.onPhaseChange = null;
+      this.onTakeoffFeedback = null;
       this.lastReportedPhase = null;
+
+      // In-canvas banner feedback timer
+      this.feedbackBanner = {
+        visible: false,
+        rating: '',
+        text: '',
+        color: '#fbc531',
+        timeRemaining: 0
+      };
     }
 
     init(canvas) {
@@ -107,13 +118,11 @@
       });
 
       // Canvas Mouse & Touch controls (Authentic DSJ2 two-button feel)
-      // Left click = Jump / Telemark landing, Right click = Two-foot landing
-      // Mouse move = pitch adjustment
       if (this.canvas) {
         this.canvas.addEventListener('mousedown', (e) => {
           e.preventDefault();
           if (e.button === 0) {
-            // Left click
+            // Left click = Jump / Telemark landing
             const state = window.SkiPhysics ? window.SkiPhysics.getJumpState() : null;
             if (state && (state.phase === 'GATE' || state.phase === 'IN_RUN')) {
               this.handleActionJump();
@@ -164,9 +173,13 @@
       const state = window.SkiPhysics.getJumpState();
       if (state.phase === 'GATE') {
         window.SkiPhysics.startInrun();
+        this.clearTakeoffBanner();
         if (window.SkiAudio && window.SkiAudio.playInRun) window.SkiAudio.playInRun();
       } else if (state.phase === 'IN_RUN') {
-        window.SkiPhysics.triggerTakeoff();
+        const feedback = window.SkiPhysics.triggerTakeoff();
+        if (feedback) {
+          this.showTakeoffBanner(feedback);
+        }
         if (window.SkiAudio && window.SkiAudio.playTakeoff) window.SkiAudio.playTakeoff();
       }
     }
@@ -176,6 +189,45 @@
       const state = window.SkiPhysics.getJumpState();
       if (state.phase === 'FLIGHT') {
         window.SkiPhysics.triggerLanding(isTelemark);
+      }
+    }
+
+    showTakeoffBanner(feedback) {
+      let color = '#44bd32'; // green for PERFECT
+      if (feedback.rating === 'EARLY') {
+        color = '#fbc531'; // yellow for early
+      } else if (feedback.rating === 'LATE') {
+        color = '#d63031'; // red for late
+      }
+
+      this.feedbackBanner = {
+        visible: true,
+        rating: feedback.rating,
+        text: feedback.text,
+        color: color,
+        timeRemaining: 2.8 // seconds
+      };
+
+      // Also update DOM element #takeoffFeedback if present
+      const domBanner = document.getElementById('takeoffFeedback');
+      if (domBanner) {
+        domBanner.textContent = feedback.text;
+        domBanner.className = `takeoff-banner-active banner-${feedback.rating.toLowerCase()}`;
+        domBanner.style.display = 'block';
+      }
+
+      if (this.onTakeoffFeedback) {
+        this.onTakeoffFeedback(feedback);
+      }
+    }
+
+    clearTakeoffBanner() {
+      this.feedbackBanner.visible = false;
+      this.feedbackBanner.timeRemaining = 0;
+      const domBanner = document.getElementById('takeoffFeedback');
+      if (domBanner) {
+        domBanner.style.display = 'none';
+        domBanner.textContent = '';
       }
     }
 
@@ -206,11 +258,26 @@
       window.SkiPhysics.update(dt, this.inputState);
       const state = window.SkiPhysics.getJumpState();
 
+      // Check if auto-launch generated feedback that wasn't displayed yet
+      if (state.takeoffFeedback && !this.feedbackBanner.visible && state.phase === 'FLIGHT' && state.time < 0.2) {
+        this.showTakeoffBanner(state.takeoffFeedback);
+      }
+
+      // Update in-canvas feedback banner timer
+      if (this.feedbackBanner.visible) {
+        this.feedbackBanner.timeRemaining -= dt;
+        if (this.feedbackBanner.timeRemaining <= 0) {
+          this.clearTakeoffBanner();
+        }
+      }
+
       // Check for phase transitions to trigger sounds or HUD events
       if (state.phase !== this.lastReportedPhase) {
         if (this.onPhaseChange) this.onPhaseChange(state.phase, state);
 
-        if (state.phase === 'LANDED') {
+        if (state.phase === 'GATE') {
+          this.clearTakeoffBanner();
+        } else if (state.phase === 'LANDED') {
           if (state.landingType === 'telemark') {
             if (window.SkiAudio && window.SkiAudio.playTelemark) window.SkiAudio.playTelemark();
           } else {
@@ -224,7 +291,6 @@
       }
 
       // Camera lerp & tracking
-      // Follow the jumper with gentle smoothing and anticipation
       const lookAheadX = state.vx * 0.45;
       const lookAheadY = state.vy * 0.25;
 
@@ -316,7 +382,10 @@
       // 5. Draw Snow Spray & Ambient Snowfall
       this.renderSnow(ctx);
 
-      // 6. Draw Retro CRT / Scanlines & Vignette
+      // 6. Draw In-Canvas Takeoff Edge Timing Banner
+      this.renderTakeoffBannerOverlay(ctx);
+
+      // 7. Draw Retro CRT / Scanlines & Vignette
       this.renderRetroScanlines(ctx);
     }
 
@@ -392,7 +461,7 @@
         ctx.lineTo(p.x, p.y);
       }
 
-      // Takeoff lip drop
+      // Takeoff lip drop at x = 0
       const lipPt = this.worldToScreen(0, 0);
       const knollPt = this.worldToScreen(geom.landingPoints[0].x, geom.landingPoints[0].y);
       ctx.lineTo(lipPt.x, lipPt.y);
@@ -427,6 +496,33 @@
         else ctx.lineTo(p.x, p.y);
       }
       ctx.stroke();
+
+      // Takeoff Edge Marker (High-visibility red/white checkered threshold line at x=0)
+      ctx.save();
+      const edgeTop = this.worldToScreen(0, 0.4);
+      const edgeBottom = this.worldToScreen(0, -3.2);
+      ctx.strokeStyle = '#eb2f06';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(edgeTop.x, edgeTop.y);
+      ctx.lineTo(edgeBottom.x, edgeBottom.y);
+      ctx.stroke();
+
+      // Subtle threshold lip marker
+      ctx.fillStyle = '#ff4757';
+      ctx.fillRect(edgeTop.x - 2, edgeTop.y - 4, 4, 8);
+      ctx.restore();
+
+      // Draw Starting Gate Beam indicator (at top of inrun)
+      ctx.save();
+      const gatePt = this.worldToScreen(geom.inrunPoints[0].x, geom.inrunPoints[0].y + 0.3);
+      ctx.strokeStyle = '#e67e22'; // wooden gate beam
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(gatePt.x - 12, gatePt.y);
+      ctx.lineTo(gatePt.x + 12, gatePt.y);
+      ctx.stroke();
+      ctx.restore();
 
       // Draw K-Point Line (Red strip across slope)
       if (geom.kPoint.found) {
@@ -471,14 +567,12 @@
     }
 
     renderTrees(ctx, geom) {
-      // Deterministic decorative pine trees on knoll and hill sidelines
       ctx.fillStyle = '#1e3720';
       const treeSpacing = 28;
       for (let i = 10; i < geom.landingPoints.length; i += treeSpacing) {
         const pt = geom.landingPoints[i];
         const screen = this.worldToScreen(pt.x, pt.y);
         if (screen.x > -30 && screen.x < this.width + 30) {
-          // Pine tree triangle
           ctx.beginPath();
           ctx.moveTo(screen.x, screen.y - 25);
           ctx.lineTo(screen.x - 8, screen.y);
@@ -502,9 +596,7 @@
     renderSpectators(ctx, geom) {
       if (!geom.hsPoint.found) return;
       const startX = geom.hsPoint.x * 1.15;
-      const screenStart = this.worldToScreen(startX, -100);
 
-      // Retro grandstand crowd heads
       const crowdColors = ['#e74c3c', '#f1c40f', '#3498db', '#ffffff', '#2ecc71', '#9b59b6'];
       for (let i = 0; i < 30; i++) {
         const ptX = startX + i * 4;
@@ -554,7 +646,6 @@
       ctx.translate(pos.x, pos.y);
 
       // Rotate skier according to body pitch
-      // Note: canvas Y is down, so negate pitch angle
       ctx.rotate((-state.pitch * Math.PI) / 180);
 
       const suitColor = this.skierConfig.suitColor || '#d63031';
@@ -586,7 +677,6 @@
       // Active Skier in Inrun / Flight / Telemark stance
       if (state.phase === 'IN_RUN' || state.phase === 'GATE') {
         // Tucked inrun crouch
-        // Skis flat along track
         ctx.strokeStyle = skisColor;
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -612,7 +702,6 @@
 
       } else if (state.phase === 'FLIGHT' || state.phase === 'TAKEOFF') {
         // Iconic DSJ2 Aerodynamic V-Flight Stance
-        // Two skis spread in V-formation
         ctx.strokeStyle = skisColor;
         ctx.lineWidth = 2.8;
 
@@ -651,7 +740,6 @@
         }
 
       } else if (state.phase === 'LANDED') {
-        // Landing stance: Telemark or Two-foot
         const isTele = state.landingType === 'telemark';
 
         ctx.strokeStyle = skisColor;
@@ -727,6 +815,45 @@
       }
     }
 
+    /**
+     * Renders prominent retro arcade takeoff feedback banner right on canvas
+     */
+    renderTakeoffBannerOverlay(ctx) {
+      if (!this.feedbackBanner.visible) return;
+
+      ctx.save();
+      const centerX = this.width * 0.5;
+      const bannerY = 68;
+
+      // Outer pill box
+      ctx.fillStyle = 'rgba(10, 14, 23, 0.88)';
+      ctx.strokeStyle = this.feedbackBanner.color;
+      ctx.lineWidth = 2.5;
+
+      const text = this.feedbackBanner.text;
+      ctx.font = 'bold 15px "Press Start 2P", monospace';
+      const textWidth = ctx.measureText(text).width;
+      const padX = 22;
+      const boxW = textWidth + padX * 2;
+      const boxH = 34;
+
+      ctx.beginPath();
+      ctx.roundRect(centerX - boxW * 0.5, bannerY - boxH * 0.5, boxW, boxH, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      // Text label with shadow
+      ctx.fillStyle = this.feedbackBanner.color;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
+      ctx.fillText(text, centerX, bannerY);
+
+      ctx.restore();
+    }
+
     renderRetroScanlines(ctx) {
       // Subtle CRT scanline overlay
       ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
@@ -750,6 +877,8 @@
     init: (canvas) => renderer.init(canvas),
     setHill: (hill) => renderer.setHill(hill),
     setSkierConfig: (cfg) => renderer.setSkierConfig(cfg),
+    showTakeoffBanner: (fb) => renderer.showTakeoffBanner(fb),
+    clearTakeoffBanner: () => renderer.clearTakeoffBanner(),
     render: (jumpState, hill, skierConfig) => {
       if (hill) renderer.setHill(hill);
       if (skierConfig) renderer.setSkierConfig(skierConfig);

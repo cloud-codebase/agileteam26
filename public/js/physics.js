@@ -1,7 +1,8 @@
 /**
  * physics.js - Retro 2D Ski Jumping Physics Engine (DSJ2 inspired)
  * Sprint 2.0: Steeper slope support, upgraded aerodynamic lift-to-drag polar curve for high glide,
- * sub-pixel takeoff edge evaluation & timing feedback, and starting gate energy scaling.
+ * sub-pixel takeoff edge evaluation & timing feedback (PERFECT/EARLY/LATE), continuous slope collision raycasting,
+ * and starting gate energy scaling.
  */
 (function() {
   'use strict';
@@ -27,19 +28,23 @@
       this.phase = 'GATE'; // GATE, IN_RUN, TAKEOFF, FLIGHT, LANDED, CRASHED, STOPPED
       this.x = 0;
       this.y = 0;
+      this.prevX = 0;
+      this.prevY = 0;
       this.vx = 0;
       this.vy = 0;
       this.speed = 0; // km/h
       this.pitch = 0; // jumper angle relative to horizontal (deg)
       this.inrunDistance = 0;
       this.takeoffQuality = 0; // 0 to 100%
-      this.takeoffFeedback = null; // { rating: 'PERFECT'|'EARLY'|'LATE', text: string, delta: number }
+      this.takeoffFeedback = null; // { rating: 'PERFECT'|'EARLY'|'LATE', text: string, delta: number, quality: number }
+      this.flightLiftRatio = 1.0;
       this.jumpDistance = 0; // measured along landing slope
       this.landingType = null; // 'telemark', 'two-foot', 'crash'
       this.styleScore = 0;
       this.heightAboveGround = 0;
       this.timeInPhase = 0;
-      this.flightLiftRatio = 1.0;
+      this.wantsLanding = false;
+      this.wantsTelemark = false;
       this.trail = []; // trajectory history for visual smoke/trail
     }
 
@@ -47,7 +52,7 @@
      * Sets starting gate (1-20). Alters starting position and inrun potential energy.
      */
     setGate(gateNumber) {
-      this.currentGate = Math.max(1, Math.min(20, Math.round(gateNumber)));
+      this.currentGate = Math.max(1, Math.min(20, Math.round(gateNumber || 12)));
       if (this.phase === 'GATE' && this.hill) {
         this.positionAtGate();
       }
@@ -70,6 +75,8 @@
 
       this.x = gatePt.x;
       this.y = gatePt.y + 0.1;
+      this.prevX = this.x;
+      this.prevY = this.y;
       this.pitch = (Math.atan2(pts[Math.min(pts.length - 1, targetIndex + 1)].y - gatePt.y,
                                pts[Math.min(pts.length - 1, targetIndex + 1)].x - gatePt.x) * 180) / Math.PI;
     }
@@ -80,8 +87,8 @@
      */
     initJump(hill, wind) {
       this.reset();
-      this.hill = hill || window.SkiHills.getHills()[0];
-      if (this.hill.gates && typeof this.hill.gates.default === 'number') {
+      this.hill = hill || (window.SkiHills ? window.SkiHills.getHills()[0] : null);
+      if (this.hill && this.hill.gates && typeof this.hill.gates.default === 'number') {
         this.currentGate = this.hill.gates.default;
       }
       const wSpeed = (wind && typeof wind.speed === 'number') ? wind.speed : (Math.random() * 3.5);
@@ -114,51 +121,54 @@
 
     /**
      * Trigger takeoff impulse when jumper springs off the lip.
-     * Evaluates sub-pixel timing relative to edge (x = 0).
-     * Returns { quality, timingDeltaMeters, rating: 'PERFECT'|'EARLY'|'LATE' }
+     * Evaluates sub-pixel edge detection relative to lip (x = 0).
+     * Returns: { quality, timingDeltaMeters, rating: 'PERFECT'|'EARLY'|'LATE', text }
      */
     triggerTakeoff() {
       if (this.phase !== 'IN_RUN') return this.takeoffFeedback;
 
-      const distToLip = -this.x; // x is <= 0 approaching edge at 0
-      let quality = 0;
+      // Edge is defined at x = 0 (takeoff table lip)
+      // distToLip: > 0 means before lip (early), < 0 means past lip (late)
+      const distToLip = -this.x; // since x <= 0 before lip
       let rating = 'PERFECT';
-      let text = 'IDEALNIE! (+100%)';
+      let text = 'PERFECT! (+100%)';
+      let quality = 100;
+      const timingDelta = Math.round(distToLip * 100) / 100;
 
       if (distToLip < -0.05) {
-        // Late takeoff past the lip
-        const lateDist = Math.abs(distToLip);
-        quality = Math.max(10, 100 - lateDist * 65);
+        // Late takeoff past lip edge
         rating = 'LATE';
-        text = `SPÓŹNIONE! (+${lateDist.toFixed(2)}m)`;
-      } else if (distToLip <= 0.65) {
-        // Sub-pixel Perfect window right on the lip
-        quality = 100 - (distToLip / 0.65) * 8;
+        const pastMeters = Math.abs(distToLip);
+        quality = Math.max(10, Math.round(100 - pastMeters * 80));
+        text = `SPÓŹNIONE! (+${pastMeters.toFixed(2)}m)`;
+      } else if (distToLip <= 0.35) {
+        // Sub-pixel sweet spot right on the threshold (0 to 35cm before edge)
         rating = 'PERFECT';
-        text = 'PERFECT! (+100%)';
-      } else if (distToLip <= 2.2) {
-        // Good / slightly early
-        quality = Math.max(60, 92 - (distToLip - 0.65) * 20);
-        rating = 'EARLY';
+        quality = Math.round(100 - (distToLip / 0.35) * 5);
+        text = `PERFECT! (${quality}%)`;
+      } else if (distToLip <= 1.2) {
+        // Very good near edge
+        rating = 'PERFECT';
+        quality = Math.round(95 - ((distToLip - 0.35) / 0.85) * 12);
         text = `DOBRZE (-${distToLip.toFixed(2)}m)`;
-      } else if (distToLip <= 6.5) {
+      } else if (distToLip <= 4.0) {
         // Noticeably early
-        quality = Math.max(30, 60 - (distToLip - 2.2) * 10);
         rating = 'EARLY';
+        quality = Math.max(35, Math.round(80 - (distToLip - 1.2) * 18));
         text = `ZA WCZEŚNIE! (-${distToLip.toFixed(2)}m)`;
       } else {
-        // Much too early
-        quality = 20;
+        // Drastically early jump
         rating = 'EARLY';
+        quality = Math.max(15, Math.round(35 - (distToLip - 4.0) * 8));
         text = `BARDZO ZA WCZEŚNIE! (-${distToLip.toFixed(1)}m)`;
       }
 
-      this.takeoffQuality = Math.round(quality);
+      this.takeoffQuality = quality;
       this.takeoffFeedback = {
-        rating,
-        text,
-        delta: Math.round(distToLip * 100) / 100,
-        quality: this.takeoffQuality
+        rating: rating,
+        text: text,
+        delta: timingDelta,
+        quality: quality
       };
 
       this.phase = 'TAKEOFF';
@@ -193,6 +203,9 @@
       if (!this.hill) return;
       dt = Math.min(dt, 0.05); // clamp lag spikes
       this.timeInPhase += dt;
+
+      this.prevX = this.x;
+      this.prevY = this.y;
 
       const ground = window.SkiHills.getGroundAt(this.hill, this.x);
       this.heightAboveGround = Math.max(0, this.y - ground.y);
@@ -265,16 +278,16 @@
       this.y = newGround.y;
       this.pitch = (newGround.angle * 180) / Math.PI;
 
-      // Auto-launch if reaching the lip without user jump input
+      // Auto-launch if reaching or crossing the lip (x >= 0) without prior manual takeoff jump
       if (this.x >= 0) {
         if (this.phase === 'IN_RUN') {
-          // Passive runoff (no pop impulse)
-          this.takeoffQuality = 30;
+          // Passive runoff past edge without pop
+          this.takeoffQuality = 25;
           this.takeoffFeedback = {
             rating: 'LATE',
-            text: 'BRAK WYBICIA (SPÓŹNIONY)',
-            delta: 0,
-            quality: 30
+            text: 'SPÓŹNIONE! (AUTO-WYBICIE)',
+            delta: Math.round(-this.x * 100) / 100,
+            quality: 25
           };
           this.phase = 'FLIGHT';
         }
@@ -285,6 +298,7 @@
      * Upgraded V-Style 2D Aerodynamic flight model (Sprint 2.0 DESIGN.md)
      * Lift coefficient C_L boosted from 1.35 to 1.75 with optimal pitch 22 deg,
      * providing genuine altitude clearance over the steeper knoll and sustained glide float.
+     * Incorporates continuous collision raycasting against landing slope profile.
      */
     updateFlight(dt, ground, inputState) {
       // Pitch control
@@ -359,18 +373,60 @@
       this.vx += ax * dt;
       this.vy += ay * dt;
 
-      this.x += this.vx * dt;
-      this.y += this.vy * dt;
+      const nextX = this.x + this.vx * dt;
+      const nextY = this.y + this.vy * dt;
 
-      // Check ground collision / landing
-      if (this.y <= ground.y) {
-        this.resolveTouchdown(ground, inputState);
+      // Continuous collision raycasting between (this.x, this.y) and (nextX, nextY)
+      const rayResult = this.checkSlopeRaycastCollision(this.x, this.y, nextX, nextY);
+
+      if (rayResult.hit) {
+        this.x = rayResult.impactX;
+        this.y = rayResult.impactY;
+        const impactGround = window.SkiHills.getGroundAt(this.hill, this.x);
+        this.resolveTouchdown(impactGround, inputState);
+      } else {
+        this.x = nextX;
+        this.y = nextY;
       }
     }
 
     /**
+     * Sub-step raycasting against the landing slope geometry between current (x1, y1) and next (x2, y2).
+     * Prevents tunneling at high flight speeds and provides sub-meter precision touchdown points.
+     */
+    checkSlopeRaycastCollision(x1, y1, x2, y2) {
+      const g2 = window.SkiHills.getGroundAt(this.hill, x2);
+      if (y2 > g2.y) {
+        return { hit: false };
+      }
+
+      // If y2 is at or below ground, find exact sub-step intersection via binary search / linear interpolation
+      let tMin = 0.0;
+      let tMax = 1.0;
+      let impactX = x2;
+      let impactY = g2.y;
+
+      for (let iter = 0; iter < 5; iter++) {
+        const tMid = (tMin + tMax) * 0.5;
+        const midX = x1 + tMid * (x2 - x1);
+        const midY = y1 + tMid * (y2 - y1);
+        const midGround = window.SkiHills.getGroundAt(this.hill, midX);
+
+        if (midY <= midGround.y) {
+          tMax = tMid;
+          impactX = midX;
+          impactY = midGround.y;
+        } else {
+          tMin = tMid;
+        }
+      }
+
+      return { hit: true, impactX, impactY };
+    }
+
+    /**
      * Landing resolution: Evaluates slope alignment, pitch angle, vertical velocity,
-     * and user input timing (telemark vs two-foot vs crash).
+     * and user input timing (Telemark vs two-foot vs crash).
      */
     resolveTouchdown(ground, inputState) {
       this.y = ground.y;
@@ -384,22 +440,29 @@
       const isTelemarkInput = (inputState && inputState.telemark) || this.wantsTelemark;
       const isLandingInput = (inputState && inputState.landing) || this.wantsLanding || isTelemarkInput;
 
-      // Crash conditions
-      const isExtremeAngle = pitchMismatch > 28 || this.pitch < -40 || this.pitch > 45;
-      const isExtremeImpact = impactVelocity > 15.5;
+      // Crash conditions:
+      // - Severe pitch misalignment (> 26 deg relative to slope)
+      // - Unreasonable extreme body angle (pitch < -42 or pitch > 45)
+      // - Heavy vertical impact without landing stance (> 12.5 m/s)
+      // - Backflip or nose-dive
+      const isSevereMismatch = pitchMismatch > 25.0;
+      const isExtremeAngle = this.pitch < -42.0 || this.pitch > 45.0;
+      const isExtremeImpact = impactVelocity > 14.5;
+      const isHardFall = !isLandingInput && impactVelocity > 11.5;
 
-      if (isExtremeAngle || (isExtremeImpact && !isLandingInput)) {
+      if (isSevereMismatch || isExtremeAngle || isExtremeImpact || isHardFall) {
         this.phase = 'CRASHED';
         this.landingType = 'crash';
-        this.styleScore = 6.0 + Math.random() * 2.0;
-      } else if (isTelemarkInput && pitchMismatch <= 18) {
+        this.styleScore = Math.round((7.0 + Math.random() * 2.0) * 2) / 2; // minimal style score on fall
+      } else if (isTelemarkInput && pitchMismatch <= 17.5 && impactVelocity <= 13.5) {
         // Crisp Telemark landing!
         this.phase = 'LANDED';
         this.landingType = 'telemark';
-        const bonus = Math.max(0, (18 - pitchMismatch) * 0.1);
-        this.styleScore = Math.min(20.0, Math.round((18.5 + bonus) * 2) / 2);
+        // Base 18.0 - 20.0 style score based on alignment
+        const alignmentBonus = Math.max(0, (17.5 - pitchMismatch) * 0.12);
+        this.styleScore = Math.min(20.0, Math.round((18.5 + alignmentBonus) * 2) / 2);
       } else {
-        // Two-footed landing
+        // Two-footed landing (safe but deductions applied)
         this.phase = 'LANDED';
         this.landingType = 'two-foot';
         this.styleScore = Math.round((15.5 + Math.random() * 1.5) * 2) / 2;
@@ -455,10 +518,10 @@
         height: this.heightAboveGround,
         takeoffQuality: this.takeoffQuality,
         takeoffFeedback: this.takeoffFeedback,
+        flightLiftRatio: this.flightLiftRatio,
+        gate: this.currentGate,
         landingType: this.landingType,
         styleScore: this.styleScore,
-        gate: this.currentGate,
-        flightLiftRatio: this.flightLiftRatio,
         wind: this.wind,
         trail: this.trail,
         time: this.timeInPhase
