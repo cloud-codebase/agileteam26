@@ -1,23 +1,46 @@
 /**
  * Tic-Tac-Toe Core Game Logic & Audio/Visual Engine
- * Implements state tracking, turn alternation, win/tie evaluation,
- * synthesized Web Audio sound effects, and canvas confetti celebration.
- * Complies with DESIGN.md specifications.
+ * Animal Faces & AI Opponent Mode (Sprint 2.0)
+ *
+ * Implements:
+ * - Animal Token Mapping (🐶 Puppy for P1 / Human, 🐱 Kitten for P2 / Computer)
+ * - Game Mode Switching ('ai' vs 'pvp')
+ * - Heuristic Computer AI (Win -> Block -> Center -> Random) with 500ms delay & click guard
+ * - Synthesized Web Audio Sound FX & Canvas Confetti
+ * - Complies strictly with DESIGN.md specifications
  */
 
 (function () {
   'use strict';
 
+  // --- Animal Token System Contracts ---
+  const PLAYER_1 = {
+    symbol: 'X',
+    emoji: '🐶',
+    name: 'Puppy',
+    cssClass: 'token-puppy'
+  };
+
+  const PLAYER_2 = {
+    symbol: 'O',
+    emoji: '🐱',
+    name: 'Kitten',
+    aiName: 'Computer 🤖',
+    cssClass: 'token-kitten'
+  };
+
   // --- Game State Contract ---
   const GameState = {
     board: Array(9).fill(''),
-    currentPlayer: 'X',
+    currentPlayer: 'X', // 'X' or 'O'
+    gameMode: 'ai', // 'ai' (default) or 'pvp'
     scores: {
       X: 0,
       O: 0,
       ties: 0
     },
-    isGameOver: false
+    isGameOver: false,
+    isThinking: false
   };
 
   // Winning combinations (rows, columns, diagonals)
@@ -37,6 +60,10 @@
   let scoreXEl = null;
   let scoreOEl = null;
   let scoreTiesEl = null;
+  let labelP1El = null;
+  let labelP2El = null;
+  let btnModeAi = null;
+  let btnModePvp = null;
   let gameBoard = null;
   let cellElements = [];
   let btnReset = null;
@@ -76,7 +103,7 @@
         const gain = ctx.createGain();
 
         // Kid-friendly bouncy bubble pop
-        const startFreq = GameState.currentPlayer === 'X' ? 440 : 587.33; // A4 for X, D5 for O
+        const startFreq = GameState.currentPlayer === 'X' ? 440 : 587.33; // A4 for Puppy, D5 for Kitten
         osc.type = 'sine';
         osc.frequency.setValueAtTime(startFreq, now);
         osc.frequency.exponentialRampToValueAtTime(startFreq * 1.5, now + 0.08);
@@ -160,6 +187,7 @@
     if (confettiCanvas) {
       confettiCtx = confettiCanvas.getContext('2d');
       resizeConfettiCanvas();
+      window.removeEventListener('resize', resizeConfettiCanvas);
       window.addEventListener('resize', resizeConfettiCanvas);
     }
   }
@@ -241,20 +269,32 @@
     }
   }
 
+  // --- Helper Getters for Player Metadata ---
+
+  function getPlayerData(symbol) {
+    return symbol === 'X' ? PLAYER_1 : PLAYER_2;
+  }
+
+  function getPlayerDisplayName(symbol) {
+    if (symbol === 'X') {
+      return `${PLAYER_1.name} ${PLAYER_1.emoji}`;
+    }
+    if (GameState.gameMode === 'ai') {
+      return PLAYER_2.aiName;
+    }
+    return `${PLAYER_2.name} ${PLAYER_2.emoji}`;
+  }
+
   // --- Core Game Logic ---
 
   /**
    * Evaluates all 8 winning combinations.
    * Returns winning combo array [a, b, c] or null.
    */
-  function checkWinner() {
+  function checkWinner(board = GameState.board) {
     for (let i = 0; i < WINNING_COMBINATIONS.length; i++) {
       const [a, b, c] = WINNING_COMBINATIONS[i];
-      if (
-        GameState.board[a] &&
-        GameState.board[a] === GameState.board[b] &&
-        GameState.board[a] === GameState.board[c]
-      ) {
+      if (board[a] && board[a] === board[b] && board[a] === board[c]) {
         return WINNING_COMBINATIONS[i];
       }
     }
@@ -264,8 +304,8 @@
   /**
    * Checks if board is full without a winner.
    */
-  function isTie() {
-    return GameState.board.every((cell) => cell !== '');
+  function isTie(board = GameState.board) {
+    return board.every((cell) => cell !== '');
   }
 
   /**
@@ -282,12 +322,19 @@
   }
 
   /**
-   * Updates scoreboard UI elements.
+   * Updates scoreboard UI elements & player labels.
    */
   function updateScoreboard() {
     if (scoreXEl) scoreXEl.textContent = GameState.scores.X;
     if (scoreOEl) scoreOEl.textContent = GameState.scores.O;
     if (scoreTiesEl) scoreTiesEl.textContent = GameState.scores.ties;
+
+    if (labelP1El) {
+      labelP1El.textContent = `${PLAYER_1.name} ${PLAYER_1.emoji}`;
+    }
+    if (labelP2El) {
+      labelP2El.textContent = GameState.gameMode === 'ai' ? 'Computer 🤖' : `${PLAYER_2.name} ${PLAYER_2.emoji}`;
+    }
   }
 
   /**
@@ -303,22 +350,94 @@
   }
 
   /**
-   * Handles user click on a cell index.
+   * Updates mode toggle pill buttons active state.
    */
-  function handleCellClick(index) {
-    if (GameState.isGameOver || GameState.board[index] !== '') {
-      return;
+  function updateModeButtons() {
+    if (btnModeAi) {
+      if (GameState.gameMode === 'ai') {
+        btnModeAi.classList.add('active');
+        btnModeAi.setAttribute('aria-pressed', 'true');
+      } else {
+        btnModeAi.classList.remove('active');
+        btnModeAi.setAttribute('aria-pressed', 'false');
+      }
+    }
+    if (btnModePvp) {
+      if (GameState.gameMode === 'pvp') {
+        btnModePvp.classList.add('active');
+        btnModePvp.setAttribute('aria-pressed', 'true');
+      } else {
+        btnModePvp.classList.remove('active');
+        btnModePvp.setAttribute('aria-pressed', 'false');
+      }
+    }
+  }
+
+  /**
+   * Switches game mode ('ai' or 'pvp')
+   */
+  function setGameMode(mode) {
+    if (mode !== 'ai' && mode !== 'pvp') return;
+    GameState.gameMode = mode;
+    updateModeButtons();
+    updateScoreboard();
+    resetBoard();
+  }
+
+  /**
+   * Heuristic Computer AI (Win -> Block -> Center -> Random)
+   * Returns chosen cell index (0..8) or -1.
+   */
+  function calculateBestMove() {
+    const board = GameState.board;
+    const emptyIndices = [];
+    for (let i = 0; i < 9; i++) {
+      if (board[i] === '') emptyIndices.push(i);
+    }
+    if (emptyIndices.length === 0) return -1;
+
+    // 1. Check if Computer ('O') can win in 1 move
+    for (const idx of emptyIndices) {
+      board[idx] = 'O';
+      const win = checkWinner(board);
+      board[idx] = '';
+      if (win) return idx;
     }
 
-    const player = GameState.currentPlayer;
+    // 2. Check if Human ('X') could win on their next turn and block them!
+    for (const idx of emptyIndices) {
+      board[idx] = 'X';
+      const block = checkWinner(board);
+      board[idx] = '';
+      if (block) return idx;
+    }
+
+    // 3. Take center cell (index 4) if available
+    if (board[4] === '') {
+      return 4;
+    }
+
+    // 4. Take random open cell
+    const randomIndex = Math.floor(Math.random() * emptyIndices.length);
+    return emptyIndices[randomIndex];
+  }
+
+  /**
+   * Executes a move on the board for the specified player symbol ('X' or 'O').
+   * Returns true if game concluded (win or tie).
+   */
+  function executeMove(index, player) {
+    const playerData = getPlayerData(player);
     GameState.board[index] = player;
 
     // Update cell DOM
     const cell = cellElements.find((el) => Number(el.getAttribute('data-index')) === index);
     if (cell) {
-      cell.textContent = player;
+      cell.textContent = playerData.emoji;
+      cell.classList.add(playerData.cssClass);
+      // Legacy classes for compatibility
       cell.classList.add(player.toLowerCase());
-      cell.setAttribute('aria-label', `Cell ${index + 1}, Player ${player}`);
+      cell.setAttribute('aria-label', `Cell ${index + 1}, ${playerData.name} ${playerData.emoji}`);
       cell.disabled = true;
     }
 
@@ -331,10 +450,12 @@
       GameState.scores[player] += 1;
       updateScoreboard();
       highlightWinningCells(winningCombo);
-      updateStatusBanner(`🎉 Player ${player} Wins! Super Star! ⭐`, 'winner');
+
+      const winnerDisplayName = getPlayerDisplayName(player);
+      updateStatusBanner(`🎉 ${winnerDisplayName} Wins! Super Star! ⭐`, 'winner');
       playTone('win');
       triggerConfetti();
-      return;
+      return true;
     }
 
     // Tie check
@@ -344,12 +465,79 @@
       updateScoreboard();
       updateStatusBanner("🤝 It's a Tie! Great Game Both! 🎈", 'tie');
       playTone('tie');
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Computer move trigger with natural thinking delay (400-600ms) and UI indicator.
+   */
+  function makeComputerMove() {
+    if (GameState.isGameOver || GameState.currentPlayer !== 'O' || GameState.isThinking) {
       return;
     }
 
-    // Switch turns
-    GameState.currentPlayer = player === 'X' ? 'O' : 'X';
-    updateStatusBanner(`Player ${GameState.currentPlayer}'s Turn! ${GameState.currentPlayer === 'X' ? '❌' : '⭕'}`, `turn-${GameState.currentPlayer.toLowerCase()}`);
+    GameState.isThinking = true;
+    updateStatusBanner('Computer is thinking... 💭', 'thinking');
+
+    // Natural child-friendly delay between 450ms and 550ms
+    const delay = Math.floor(Math.random() * 150) + 450;
+
+    setTimeout(() => {
+      // Guard against reset during delay
+      if (GameState.isGameOver || GameState.currentPlayer !== 'O') {
+        GameState.isThinking = false;
+        return;
+      }
+
+      const bestMove = calculateBestMove();
+      if (bestMove !== -1) {
+        const gameEnded = executeMove(bestMove, 'O');
+        GameState.isThinking = false;
+
+        if (!gameEnded) {
+          GameState.currentPlayer = 'X';
+          updateStatusBanner("Puppy's Turn 🐶 Ready, set, go!", 'turn-x');
+        }
+      } else {
+        GameState.isThinking = false;
+      }
+    }, delay);
+  }
+
+  /**
+   * Handles user click on a cell index.
+   */
+  function handleCellClick(index) {
+    // Click guard: prevent action if game over, cell filled, or computer is thinking
+    if (GameState.isGameOver || GameState.isThinking || GameState.board[index] !== '') {
+      return;
+    }
+
+    // In AI mode, human plays 'X'
+    if (GameState.gameMode === 'ai' && GameState.currentPlayer !== 'X') {
+      return;
+    }
+
+    const current = GameState.currentPlayer;
+    const gameEnded = executeMove(index, current);
+
+    if (gameEnded) {
+      return;
+    }
+
+    if (GameState.gameMode === 'ai') {
+      // Switch turn to AI opponent
+      GameState.currentPlayer = 'O';
+      makeComputerMove();
+    } else {
+      // Switch turns in 2-Player mode
+      GameState.currentPlayer = current === 'X' ? 'O' : 'X';
+      const nextPlayerName = getPlayerDisplayName(GameState.currentPlayer);
+      updateStatusBanner(`${nextPlayerName}'s Turn! Ready!`, `turn-${GameState.currentPlayer.toLowerCase()}`);
+    }
   }
 
   /**
@@ -358,6 +546,7 @@
   function resetBoard() {
     GameState.board = Array(9).fill('');
     GameState.isGameOver = false;
+    GameState.isThinking = false;
     GameState.currentPlayer = 'X';
 
     cellElements.forEach((cell, idx) => {
@@ -372,7 +561,7 @@
       cancelAnimationFrame(confettiAnimationId);
     }
 
-    updateStatusBanner("Player X's Turn! ❌ Ready, set, go!", 'turn-x');
+    updateStatusBanner("Puppy's Turn 🐶 Ready, set, go!", 'turn-x');
     playTone('reset');
   }
 
@@ -395,6 +584,10 @@
     scoreXEl = document.getElementById('score-x');
     scoreOEl = document.getElementById('score-o');
     scoreTiesEl = document.getElementById('score-ties');
+    labelP1El = document.getElementById('label-p1') || document.querySelector('.score-card-x .player-label');
+    labelP2El = document.getElementById('label-p2') || document.querySelector('.score-card-o .player-label');
+    btnModeAi = document.getElementById('btn-mode-ai');
+    btnModePvp = document.getElementById('btn-mode-pvp');
     gameBoard = document.getElementById('game-board');
     btnReset = document.getElementById('btn-reset');
     btnResetScores = document.getElementById('btn-reset-scores');
@@ -419,9 +612,18 @@
       btnResetScores.addEventListener('click', resetScores);
     }
 
+    // Hook mode buttons defensively if present or dynamically added
+    if (btnModeAi) {
+      btnModeAi.addEventListener('click', () => setGameMode('ai'));
+    }
+    if (btnModePvp) {
+      btnModePvp.addEventListener('click', () => setGameMode('pvp'));
+    }
+
     // Set initial display
+    updateModeButtons();
     updateScoreboard();
-    updateStatusBanner("Player X's Turn! ❌ Ready, set, go!", 'turn-x');
+    updateStatusBanner("Puppy's Turn 🐶 Ready, set, go!", 'turn-x');
   }
 
   // Safe startup wrapper
@@ -433,8 +635,13 @@
 
   // Expose clean namespace for testing and integration
   window.TicTacToe = {
+    PLAYER_1,
+    PLAYER_2,
     GameState,
     WINNING_COMBINATIONS,
+    setGameMode,
+    calculateBestMove,
+    makeComputerMove,
     handleCellClick,
     checkWinner,
     isTie,
