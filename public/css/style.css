@@ -70,7 +70,7 @@ body {
   position: fixed;
   top: 0; left: 0; bottom: 0; right: 0;
   background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%),
-              linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+              linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 255, 0, 0.03));
   z-index: 999;
   background-size: 100% 3px, 4px 100%;
   pointer-events: none;
@@ -787,6 +787,122 @@ body {
   0% { transform: translateX(-50%) scale(0.6); opacity: 0; }
   60% { transform: translateX(-50%) scale(1.15); opacity: 1; }
   100% { transform: translateX(-50%) scale(1.0); opacity: 1; }
+}
+
+/* ============================================================
+   In-Flight Telemetry HUD Overlay (#flight-telemetry-hud) - SCRUM-186
+   ============================================================ */
+.flight-telemetry-hud {
+  position: absolute;
+  top: 72px;
+  right: 14px;
+  background: rgba(10, 15, 30, 0.90);
+  border: 2px solid var(--border-neon);
+  border-radius: 8px;
+  padding: 8px 12px;
+  width: 200px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 15px rgba(56, 189, 248, 0.3);
+  pointer-events: none;
+  z-index: 14;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(4px);
+}
+
+.flight-telemetry-hud.hidden {
+  opacity: 0;
+  transform: translateX(12px);
+  pointer-events: none;
+}
+
+.telemetry-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+  padding-bottom: 4px;
+}
+
+.telemetry-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--text-green);
+  box-shadow: 0 0 8px var(--text-green);
+  animation: radarBlink 1s infinite alternate ease-in-out;
+}
+
+@keyframes radarBlink {
+  0% { opacity: 0.4; }
+  100% { opacity: 1; filter: drop-shadow(0 0 4px #22c55e); }
+}
+
+.telemetry-title {
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: var(--text-bright);
+  text-transform: uppercase;
+}
+
+.telemetry-metrics-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.telemetry-card {
+  background: rgba(2, 6, 23, 0.7);
+  border: 1px solid #1e293b;
+  border-radius: 4px;
+  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.telemetry-label {
+  font-size: 8px;
+  letter-spacing: 0.8px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.telemetry-val-wrap {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.telemetry-val {
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  font-family: 'Courier New', monospace;
+}
+
+.alt-card .telemetry-val {
+  color: #38bdf8;
+  text-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+}
+
+.speed-card .telemetry-val {
+  color: #34d399;
+  text-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
+}
+
+.glide-card .telemetry-val {
+  color: #fbbf24;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
+}
+
+.telemetry-sub {
+  font-size: 7.5px;
+  color: #64748b;
+  letter-spacing: 0.5px;
+  margin-top: -1px;
 }
 
 /* Wind Indicator Specifics */

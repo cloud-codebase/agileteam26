@@ -1,12 +1,18 @@
 /**
  * renderer.js - 2D Canvas Procedural Ski Jump Renderer
- * Sprint 1.0 (SCRUM-173), Sprint 2.0 (SCRUM-176), Sprint 3.0 (SCRUM-180)
+ * Sprint 1.0 (SCRUM-173), Sprint 2.0 (SCRUM-176), Sprint 3.0 (SCRUM-180), Sprint 4.0 (SCRUM-186)
  *
- * Sprint 3.0 Enhancements (SCRUM-180):
- * - High-contrast take-off table lip at (x=0, y=0) with neon edge stop block & vertical threshold flags (🚩 EDGE / TAKEOFF).
- * - Red & white warning track safety chevrons/stripes along the inrun track bed across the final warning zone (e.g. 12m).
- * - Sweet spot zone (0.4m - 3.2m before lip) highlighted with glowing cyan/lime neon border & dynamic pulsation when skier enters zone.
- * - Smooth camera framing ensuring table lip and warning track are prominently visible ahead of skier before launch.
+ * Sprint 4.0 Enhancements (SCRUM-186):
+ * - Dynamic Camera Slope Tracking: Smoothly follows the jumper descending down the steep mountain slope (y drop),
+ *   framing the skier in the upper-center third and dynamically expanding zoom (targetScale ~ 2.65 in FLIGHT)
+ *   so the player has high visibility of the slope drop and flight cushion ahead.
+ * - Steep Terrain Profile Visuals: High-contrast vertical table drop face (3.0m - 3.8m deep metallic/stone wall below lip).
+ *   FIS standard distance markers on the steep landing slope:
+ *   - Blue P-Point (Knoll / Bula limit)
+ *   - Bright Red K-Point (Critical point)
+ *   - Neon Yellow / Gold HS-Point (Hill Size)
+ *   - Emerald Green Hill Record line with official distance and record-holder banner.
+ * - Retro DSJ CRT aesthetics, procedural snow, crowd, and tree placement conforming to steep hill geometry.
  */
 
 (function (window) {
@@ -34,7 +40,7 @@
     pineTrees: [],
     cheeringCrowd: [],
 
-    // Sprint 2.0 Gate Clearance Animation state
+    // Gate Clearance Animation state
     gateAnimation: {
       prevPhase: 'GATE',
       isClearing: false,
@@ -93,7 +99,7 @@
 
       // Procedural trees along the hill slopes
       this.pineTrees = [];
-      for (let x = -80; x < 280; x += 14) {
+      for (let x = -80; x < 320; x += 12) {
         if (x > -8 && x < 8) continue; // skip takeoff lip
         this.pineTrees.push({
           worldX: x + (Math.random() * 6 - 3),
@@ -106,9 +112,9 @@
       // Spectator stands dots
       this.cheeringCrowd = [];
       const crowdColors = ['#e63946', '#457b9d', '#f1faee', '#e9c46a', '#2a9d8f', '#ffb703'];
-      for (let i = 0; i < 90; i++) {
+      for (let i = 0; i < 110; i++) {
         this.cheeringCrowd.push({
-          worldX: 50 + (i * 2.2) + Math.random() * 1.5,
+          worldX: 40 + (i * 2.4) + Math.random() * 1.5,
           color: crowdColors[i % crowdColors.length],
           bobOffset: Math.random() * Math.PI * 2,
           bobSpeed: 3 + Math.random() * 4
@@ -118,7 +124,10 @@
 
     /**
      * Updates camera smoothly tracking the jumper
-     * Sprint 3.0: In inrun phase, leads the camera ahead of skier towards x=0 so take-off edge is visible.
+     * Sprint 4.0 (SCRUM-186):
+     * - In FLIGHT phase, tracks skier along steep descending mountain grade (y descent),
+     *   keeping skier in upper-center third with visible terrain drop below.
+     * - Target scale dynamic expansion: targetScale = 2.65 during high flight, framing both skier and slope drop.
      */
     updateCamera(physicsState) {
       if (!physicsState) return;
@@ -129,29 +138,31 @@
 
       // Desired camera target in world coordinates
       if (phase === 'GATE') {
-        // Close-up on the starting gate and jumper sitting on bar
+        // Close-up on starting gate and jumper sitting on bar
         this.camera.targetX = px + 8;
         this.camera.targetY = py - 3;
         this.camera.targetScale = 4.2;
       } else if (phase === 'INRUN') {
-        // Camera leads ahead towards table lip (x=0) so player can anticipate takeoff timing
+        // Camera leads ahead towards table lip (x=0) so player anticipates takeoff timing
         this.camera.targetX = px + 14;
         this.camera.targetY = py - 3.5;
         this.camera.targetScale = 3.35;
       } else if (phase === 'FLIGHT') {
-        // Broad dynamic view giving wide angle of flight curve
-        this.camera.targetX = px + 18;
-        this.camera.targetY = py + 2;
-        this.camera.targetScale = 2.85;
+        // Dynamic camera tracking down the steep slope drop:
+        // Skier descends rapidly down y; lead X ahead by 22m and Y down slightly (+8m)
+        // to place skier in upper-center third with slope drop and K-point clearly visible ahead.
+        this.camera.targetX = px + 22;
+        this.camera.targetY = py + 8.5;
+        this.camera.targetScale = 2.65;
       } else {
-        // Landing & outrun
-        this.camera.targetX = px + 10;
-        this.camera.targetY = py - 2;
-        this.camera.targetScale = 3.0;
+        // Landing & outrun: smoothly frame the skier deceleration in the basin
+        this.camera.targetX = px + 12;
+        this.camera.targetY = py + 2;
+        this.camera.targetScale = 2.95;
       }
 
       // Smooth lerp camera
-      const lerpFactor = 0.08;
+      const lerpFactor = (phase === 'FLIGHT') ? 0.10 : 0.08;
       this.camera.x += (this.camera.targetX - this.camera.x) * lerpFactor;
       this.camera.y += (this.camera.targetY - this.camera.y) * lerpFactor;
       this.camera.scale += (this.camera.targetScale - this.camera.scale) * lerpFactor;
@@ -161,8 +172,8 @@
      * Converts world meter coordinates to canvas screen pixel coordinates
      */
     worldToScreen(wx, wy) {
-      const cx = this.width * 0.42; // Focal center on screen
-      const cy = this.height * 0.48;
+      const cx = this.width * 0.40; // Focal center on screen
+      const cy = this.height * 0.45;
       const sx = cx + (wx - this.camera.x) * this.camera.scale;
       const sy = cy + (wy - this.camera.y) * this.camera.scale;
       return { x: sx, y: sy };
@@ -217,7 +228,6 @@
       // Progress lift animation if clearing
       if (anim.isClearing) {
         anim.clearTimer += (dt || 0.016);
-        // Animate upward pivot over ~0.45 seconds
         anim.liftProgress = Math.min(1.0, anim.clearTimer / 0.45);
       }
 
@@ -266,10 +276,10 @@
       // Draw Inrun Tower structure & Inrun slope track (with enhanced metallic scaffolding, starting bar & hazard pads)
       this._drawInrunStructure(ctx, hill, physicsState);
 
-      // Draw Landing Hill Profile & Snow terrain
+      // Draw Landing Hill Profile & Snow terrain with steep FIS knoll drop
       this._drawLandingHill(ctx, hill);
 
-      // Draw Distance Markers (P-Point, K-Point, HS-Point, 100m, etc.)
+      // Draw Distance Markers (Blue P-Point, Red K-Point, Gold HS-Point, Emerald Record Line)
       this._drawDistanceMarkers(ctx, hill);
 
       // Draw Pine trees & Cheering crowd
@@ -343,9 +353,9 @@
     },
 
     /**
-     * Enhanced Inrun Structure Rendering (SCRUM-176 & SCRUM-180)
+     * Enhanced Inrun Structure Rendering
      * Renders heavy metallic scaffolding, yellow/black hazard diagonal stripes, starting tower,
-     * high-contrast starting bar beam, and the Sprint 3.0 take-off warning track, sweet spot glow,
+     * high-contrast starting bar beam, take-off warning track, sweet spot glow,
      * high-contrast table lip, and guide flags.
      */
     _drawInrunStructure(ctx, hill, physicsState) {
@@ -358,7 +368,7 @@
         return;
       }
 
-      const samples = 36; // Increased resolution for smoother track and warning stripes
+      const samples = 36;
       const points = [];
       const worldPoints = [];
       for (let i = 0; i <= samples; i++) {
@@ -375,10 +385,9 @@
       this._drawStartingTower(ctx, gateScreen);
 
       // 2. Heavy steel metallic lattice scaffolding under inrun track
-      ctx.strokeStyle = '#64748b'; // metallic steel gray
+      ctx.strokeStyle = '#64748b';
       ctx.lineWidth = 2.8;
 
-      // Scaffolding pillars downwards with dual metallic depth
       for (let i = 0; i < points.length; i += 4) {
         // Main pillar
         ctx.strokeStyle = '#475569';
@@ -414,7 +423,7 @@
 
       // 3. Inrun track surface (snow bed & ceramic track groove)
       ctx.lineWidth = 5.0;
-      ctx.strokeStyle = '#e2e8f0'; // bright white ceramic/snow track
+      ctx.strokeStyle = '#e2e8f0';
       ctx.beginPath();
       ctx.moveTo(points[0].x, points[0].y);
       for (let i = 1; i < points.length; i++) {
@@ -432,21 +441,21 @@
       }
       ctx.stroke();
 
-      // 4. Sprint 3.0 (SCRUM-180): High-Contrast Takeoff Zone Rendering
-      // Renders warning stripes, sweet spot pulsing glow, table lip, stop block, and threshold guide flags
+      // 4. Takeoff Zone Rendering: warning stripes, sweet spot pulsing glow, table lip, stop block, and guide flags
       this._drawTakeoffZone(ctx, hill, physicsState);
 
-      // 5. Draw High-Contrast Starting Gate Slot, Hazard Pads & Bar Beam
+      // 5. Draw Starting Gate Slot, Hazard Pads & Bar Beam
       this._drawStartingGate(ctx, gateScreen, physicsState);
 
       ctx.restore();
     },
 
     /**
-     * Sprint 3.0 (SCRUM-180): Take-Off Zone Visualization
-     * - Warning track: alternating red/white safety chevrons/stripes along the final warningZoneLen meters leading to lip.
-     * - Sweet spot zone: glowing cyan/lime neon border with dynamic pulse when skier enters.
-     * - High-contrast table lip at (x=0, y=0) with neon edge stop block & vertical guide flags (🚩 EDGE / TAKEOFF).
+     * Take-Off Zone Visualization (SCRUM-180 & SCRUM-186)
+     * - Table drop face: High-contrast vertical metallic foundation wall (3.0m - 3.8m deep)
+     * - Warning track chevrons
+     * - Sweet spot neon glow
+     * - Stop block and threshold guide flags
      */
     _drawTakeoffZone(ctx, hill, physicsState) {
       const physics = window.SkiPhysics;
@@ -457,7 +466,7 @@
       const takeoffCfg = (hill && hill.takeoffConfig) ? hill.takeoffConfig : {
         warningZoneLen: 12.0,
         sweetSpotLen: 2.8,
-        lipHeight: 3.0
+        lipHeight: 3.2
       };
 
       const warnLen = takeoffCfg.warningZoneLen || 12.0;
@@ -465,11 +474,9 @@
 
       ctx.save();
 
-      // 1. Render Red/White Warning Track Stripes along the inrun track bed across warningZoneLen
-      // Samples along the inrun approaching s = 1.0 (lip at x=0, y=0)
+      // 1. Render Red/White Warning Track Stripes along the inrun track bed
       const numStripes = 16;
       for (let i = 0; i < numStripes; i++) {
-        // Distance remaining from lip for segment [dist1, dist2]
         const dist1 = warnLen * (1 - (i / numStripes));
         const dist2 = warnLen * (1 - ((i + 1) / numStripes));
 
@@ -482,7 +489,6 @@
         const sp1 = this.worldToScreen(pos1.x, pos1.y);
         const sp2 = this.worldToScreen(pos2.x, pos2.y);
 
-        // Alternating red and white/silver chevrons
         const isRed = (i % 2 === 0);
         ctx.strokeStyle = isRed ? '#ef4444' : '#ffffff';
         ctx.lineWidth = 4.5;
@@ -491,9 +497,8 @@
         ctx.lineTo(sp2.x, sp2.y);
         ctx.stroke();
 
-        // High-contrast diagonal hazard hatch marks on track bed
         if (i % 2 === 0) {
-          ctx.strokeStyle = '#facc15'; // hazard yellow border
+          ctx.strokeStyle = '#facc15';
           ctx.lineWidth = 1.2;
           ctx.beginPath();
           ctx.moveTo(sp1.x, sp1.y - 2);
@@ -502,9 +507,7 @@
         }
       }
 
-      // 2. Render Sweet Spot Zone (e.g. 0.4m to 3.2m before lip) with pulsing neon glow
-      // Check if skier is currently within warning / sweet spot zone during INRUN
-      const currentX = (physicsState && typeof physicsState.x === 'number') ? physicsState.x : -999;
+      // 2. Render Sweet Spot Zone with pulsing neon glow
       const phase = physicsState ? physicsState.phase : 'GATE';
       const inrunProgress = (physicsState && typeof physicsState.inrunProgress === 'number') ? physicsState.inrunProgress : 0;
       const distRemaining = (1 - inrunProgress) * inrunLen;
@@ -521,12 +524,10 @@
       const spSweet1 = this.worldToScreen(sweetPos1.x, sweetPos1.y);
       const spSweet2 = this.worldToScreen(sweetPos2.x, sweetPos2.y);
 
-      // Pulse alpha based on performance.now()
       const now = performance.now() * 0.008;
       const pulse = inSweetSpot ? (0.75 + 0.25 * Math.sin(now * 3.5)) : (0.55 + 0.2 * Math.sin(now * 1.5));
       const glowColor = inSweetSpot ? `rgba(34, 197, 94, ${pulse})` : `rgba(56, 189, 248, ${pulse})`;
 
-      // Outer sweet spot glow line
       ctx.save();
       ctx.lineWidth = inSweetSpot ? 8.0 : 6.0;
       ctx.strokeStyle = glowColor;
@@ -536,7 +537,6 @@
       ctx.lineTo(spSweet2.x, spSweet2.y - 1);
       ctx.stroke();
 
-      // Inner intense neon core line
       ctx.lineWidth = inSweetSpot ? 3.2 : 2.4;
       ctx.strokeStyle = inSweetSpot ? '#86efac' : '#a5f3fc';
       ctx.beginPath();
@@ -544,34 +544,50 @@
       ctx.lineTo(spSweet2.x, spSweet2.y - 1);
       ctx.stroke();
 
-      // Sweet spot ground text label
       ctx.fillStyle = inSweetSpot ? '#22c55e' : '#38bdf8';
       ctx.font = 'bold 6px monospace';
       ctx.fillText('⚡ SWEET SPOT', spSweet1.x - 2, spSweet1.y - 8);
       ctx.restore();
 
-      // 3. High-Contrast Table Lip at (x=0, y=0)
-      const lipWorld = getInrunPos(hill, 1.0); // exactly (0, 0)
+      // 3. High-Contrast Table Lip at (x=0, y=0) & Vertical Table Drop Wall (SCRUM-186)
+      const lipWorld = getInrunPos(hill, 1.0); // (0, 0)
       const lipScreen = this.worldToScreen(lipWorld.x, lipWorld.y);
 
-      // Vertical table drop face (e.g. 3m table height down to knoll start)
-      const lipHeightWorld = takeoffCfg.lipHeight || 3.0;
-      const lipDropBottom = this.worldToScreen(0, lipHeightWorld);
+      // Vertical table drop height (ht ~ 3.0m - 3.8m deep below lip)
+      const ht = (hill && hill.knollDrop !== undefined) ? hill.knollDrop :
+                 ((hill && hill.tableHeight !== undefined) ? hill.tableHeight : (takeoffCfg.lipHeight || 3.4));
 
-      // Solid dark-slate table foundation block
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(lipScreen.x - 6, lipScreen.y, 6, lipDropBottom.y - lipScreen.y + 4);
+      const lipDropBottom = this.worldToScreen(0, ht);
 
-      // High-contrast edge stop block (bright red/amber neon hazard pad)
+      // Deep dark metallic/stone wall below lip
+      const wallWidth = 10;
+      const wallHeight = Math.max(16, lipDropBottom.y - lipScreen.y);
+
+      // Wall shadow and metallic masonry texture
+      ctx.fillStyle = '#0a0f1d';
+      ctx.fillRect(lipScreen.x - wallWidth, lipScreen.y, wallWidth, wallHeight);
+
+      // Vertical masonry panels
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(lipScreen.x - wallWidth, lipScreen.y, wallWidth, wallHeight);
+
+      // Table drop hazard edge border
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(lipScreen.x, lipScreen.y);
+      ctx.lineTo(lipScreen.x, lipDropBottom.y);
+      ctx.stroke();
+
+      // High-contrast edge stop block (bright red neon hazard pad)
       ctx.fillStyle = '#ef4444';
       ctx.fillRect(lipScreen.x - 3, lipScreen.y - 2, 4, 16);
-
-      // Golden safety hazard outline
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 1.4;
       ctx.strokeRect(lipScreen.x - 3, lipScreen.y - 2, 4, 16);
 
-      // Brilliant neon white line right on the edge threshold (x = 0)
+      // Brilliant neon white line right on takeoff edge (x = 0)
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 2.0;
       ctx.beginPath();
@@ -580,23 +596,20 @@
       ctx.stroke();
 
       // 4. Threshold Guide Flags (🚩 EDGE / TAKEOFF)
-      // Flag pole
-      ctx.strokeStyle = '#e2e8f0'; // bright silver pole
+      ctx.strokeStyle = '#e2e8f0';
       ctx.lineWidth = 1.8;
       ctx.beginPath();
       ctx.moveTo(lipScreen.x, lipScreen.y);
       ctx.lineTo(lipScreen.x, lipScreen.y - 28);
       ctx.stroke();
 
-      // Pole finial
       ctx.fillStyle = '#f59e0b';
       ctx.beginPath();
       ctx.arc(lipScreen.x, lipScreen.y - 28, 2.0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Pennant Flag flapping slightly
       const flagWave = Math.sin(now * 2.0) * 1.5;
-      ctx.fillStyle = '#dc2626'; // bright crimson red flag
+      ctx.fillStyle = '#dc2626';
       ctx.beginPath();
       ctx.moveTo(lipScreen.x, lipScreen.y - 28);
       ctx.lineTo(lipScreen.x + 18 + flagWave, lipScreen.y - 22);
@@ -604,23 +617,7 @@
       ctx.closePath();
       ctx.fill();
 
-      // Second marker flag on opposite guide rail for 3D depth
-      ctx.strokeStyle = '#94a3b8';
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.moveTo(lipScreen.x - 8, lipScreen.y - 2);
-      ctx.lineTo(lipScreen.x - 8, lipScreen.y - 22);
-      ctx.stroke();
-
-      ctx.fillStyle = '#eab308'; // yellow guide flag
-      ctx.beginPath();
-      ctx.moveTo(lipScreen.x - 8, lipScreen.y - 22);
-      ctx.lineTo(lipScreen.x + 4 + flagWave, lipScreen.y - 18);
-      ctx.lineTo(lipScreen.x - 8, lipScreen.y - 14);
-      ctx.closePath();
-      ctx.fill();
-
-      // High-contrast textual banner badge above edge: "🚩 TAKEOFF / EDGE"
+      // Guide banner badge above lip
       ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
       ctx.fillRect(lipScreen.x - 18, lipScreen.y - 42, 38, 11);
       ctx.strokeStyle = inSweetSpot ? '#22c55e' : '#ef4444';
@@ -635,7 +632,7 @@
     },
 
     /**
-     * Draws starting tower housing & staircase behind gate position
+     * Draws starting tower housing & platform
      */
     _drawStartingTower(ctx, gateScreen) {
       ctx.save();
@@ -644,32 +641,26 @@
       const towerW = 42;
       const towerH = 120;
 
-      // Tower superstructure background
-      ctx.fillStyle = '#1e293b'; // dark metallic slate
+      ctx.fillStyle = '#1e293b';
       ctx.fillRect(towerX, towerY, towerW, towerH);
 
-      // Tower roof overhang (FIS official cabin)
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(towerX - 4, towerY - 6, towerW + 8, 8);
 
-      // FIS / TOWER badge
       ctx.fillStyle = '#f59e0b';
       ctx.fillRect(towerX + 2, towerY + 3, towerW - 4, 7);
       ctx.fillStyle = '#000000';
       ctx.font = 'bold 6px monospace';
       ctx.fillText('FIS TOWER', towerX + 5, towerY + 8);
 
-      // Tower structural beams & windows
       ctx.strokeStyle = '#475569';
       ctx.lineWidth = 1.5;
       ctx.strokeRect(towerX, towerY, towerW, towerH);
 
-      // Glass windows (warm coach room light)
       ctx.fillStyle = 'rgba(254, 240, 138, 0.45)';
       ctx.fillRect(towerX + 6, towerY + 14, 12, 10);
       ctx.fillRect(towerX + 22, towerY + 14, 12, 10);
 
-      // Staircase railing alongside tower
       ctx.strokeStyle = '#94a3b8';
       ctx.lineWidth = 1.2;
       ctx.beginPath();
@@ -681,102 +672,77 @@
     },
 
     /**
-     * Draws starting gate platform, yellow/black hazard diagonal safety pads,
-     * and high-contrast starting bar beam with active clearance lift animation.
+     * Draws starting gate platform, hazard pads and starting bar beam
      */
     _drawStartingGate(ctx, gateScreen, physicsState) {
       ctx.save();
 
-      // Platform base
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(gateScreen.x - 22, gateScreen.y - 12, 22, 16);
 
-      // Yellow & Black Diagonal Hazard Safety Pads behind/around the gate slot
       this._drawHazardPad(ctx, gateScreen.x - 22, gateScreen.y - 12, 22, 5);
       this._drawHazardPad(ctx, gateScreen.x - 22, gateScreen.y + 2, 22, 4);
 
-      // Side Gate Uprights (Gate Stanchions / slotted beam track)
-      // Left/Rear Stanchion
       ctx.fillStyle = '#334155';
       ctx.fillRect(gateScreen.x - 14, gateScreen.y - 24, 4, 26);
-      ctx.fillStyle = '#e2e8f0'; // metallic slot guide
+      ctx.fillStyle = '#e2e8f0';
       ctx.fillRect(gateScreen.x - 13, gateScreen.y - 22, 2, 22);
 
-      // Right/Front Stanchion
       ctx.fillStyle = '#334155';
       ctx.fillRect(gateScreen.x - 4, gateScreen.y - 24, 4, 26);
       ctx.fillStyle = '#e2e8f0';
       ctx.fillRect(gateScreen.x - 3, gateScreen.y - 22, 2, 22);
 
-      // Top crossbeam linking stanchions
       ctx.fillStyle = '#1e293b';
       ctx.fillRect(gateScreen.x - 16, gateScreen.y - 26, 18, 4);
 
-      // Gate number plate (#12)
       ctx.fillStyle = '#0284c7';
       ctx.fillRect(gateScreen.x - 14, gateScreen.y - 32, 14, 6);
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 5px monospace';
       ctx.fillText('GATE 12', gateScreen.x - 13, gateScreen.y - 27);
 
-      // Evaluate Gate Clearance Lift Animation
-      // When jumper pushes off, the bar pivots up or clears upwards
       const anim = this.gateAnimation;
-      const liftProgress = anim.liftProgress || 0; // 0 to 1
+      const liftProgress = anim.liftProgress || 0;
 
-      // Resting bar position sits right behind skier's boots/bench (~gateScreen.y - 6)
-      // When lifted, bar moves up by ~16px and angles upward
       const barBaseY = gateScreen.y - 6 - (liftProgress * 18);
-      const barRotation = -liftProgress * 0.45; // slight upward tilt in radians
+      const barRotation = -liftProgress * 0.45;
 
       ctx.save();
       ctx.translate(gateScreen.x - 14, barBaseY);
       ctx.rotate(barRotation);
 
-      // High-Contrast Starting Bar Beam
-      // Outer bright neon safety pad / metallic casing
       ctx.fillStyle = '#000000';
       ctx.fillRect(-2, -3, 18, 6);
 
-      // High-contrast yellow/black hazard pattern directly on the bar beam
       this._drawHazardPad(ctx, -1, -2, 16, 4);
 
-      // Neon yellow/green safety edge glow highlight
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 1.2;
       ctx.strokeRect(-2, -3, 18, 6);
 
-      // Chrome pivot pin / release latch on stanchion
-      ctx.fillStyle = liftProgress > 0.1 ? '#22c55e' : '#ef4444'; // Green when cleared, Red when locked
+      ctx.fillStyle = liftProgress > 0.1 ? '#22c55e' : '#ef4444';
       ctx.beginPath();
       ctx.arc(0, 0, 2.2, 0, Math.PI * 2);
       ctx.fill();
 
-      // "BAR" text on beam
       ctx.fillStyle = '#000000';
       ctx.font = 'bold 5px monospace';
       ctx.fillText('BAR', 3, 1.5);
 
       ctx.restore();
-
       ctx.restore();
     },
 
-    /**
-     * Helper to render yellow & black diagonal hazard stripes on safety pads
-     */
     _drawHazardPad(ctx, x, y, width, height) {
       ctx.save();
-      // Base safety yellow
       ctx.fillStyle = '#eab308';
       ctx.fillRect(x, y, width, height);
 
-      // Clip to hazard pad area
       ctx.beginPath();
       ctx.rect(x, y, width, height);
       ctx.clip();
 
-      // Diagonal black stripes
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = 2.5;
 
@@ -788,17 +754,12 @@
         ctx.stroke();
       }
 
-      // Outer outline
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = 0.8;
       ctx.strokeRect(x, y, width, height);
-
       ctx.restore();
     },
 
-    /**
-     * Draws gate clearance snow dust puffs when jumper pushes off
-     */
     _drawGateSnowPuffs(ctx) {
       const anim = this.gateAnimation;
       if (!anim.snowPuffs || anim.snowPuffs.length === 0) return;
@@ -813,10 +774,15 @@
       ctx.restore();
     },
 
+    /**
+     * Renders steep FIS Landing Hill Profile & Snow terrain (SCRUM-186)
+     * Utilizes HillData.getGroundY or SkiPhysics.getGroundY
+     */
     _drawLandingHill(ctx, hill) {
       ctx.save();
-      const physics = window.SkiPhysics;
-      const getGroundY = physics ? physics.getGroundY : null;
+      const getGroundY = (window.HillData && typeof window.HillData.getGroundY === 'function')
+        ? window.HillData.getGroundY
+        : (window.SkiPhysics ? window.SkiPhysics.getGroundY : null);
 
       if (!getGroundY) {
         ctx.restore();
@@ -824,9 +790,10 @@
       }
 
       const k = (hill && hill.kPoint) ? hill.kPoint : 120;
-      const endX = (hill && hill.hsPoint ? hill.hsPoint : k * 1.15) + 65;
+      const hs = (hill && hill.hsPoint) ? hill.hsPoint : Math.round(k * 1.15);
+      const endX = hs + 80;
 
-      const step = 2.5; // meters per sample
+      const step = 2.0; // high sampling resolution for steep curve
       const screenPoints = [];
 
       for (let wx = 0; wx <= endX; wx += step) {
@@ -834,19 +801,24 @@
         screenPoints.push(this.worldToScreen(wx, wy));
       }
 
-      // Terrain body fill
+      if (screenPoints.length < 2) {
+        ctx.restore();
+        return;
+      }
+
+      // Terrain body polygon fill
       ctx.beginPath();
       ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
       for (let i = 1; i < screenPoints.length; i++) {
         ctx.lineTo(screenPoints[i].x, screenPoints[i].y);
       }
       const last = screenPoints[screenPoints.length - 1];
-      ctx.lineTo(last.x, this.height + 150);
-      ctx.lineTo(screenPoints[0].x, this.height + 150);
+      ctx.lineTo(last.x, this.height + 250);
+      ctx.lineTo(screenPoints[0].x, this.height + 250);
       ctx.closePath();
 
-      // Snow gradient with dirt/rock depth underneath
-      const groundGrad = ctx.createLinearGradient(0, screenPoints[0].y, 0, this.height + 150);
+      // Snow gradient with deep winter rock/dirt underneath
+      const groundGrad = ctx.createLinearGradient(0, screenPoints[0].y, 0, this.height + 250);
       groundGrad.addColorStop(0, '#f8fafc'); // fresh packed white snow
       groundGrad.addColorStop(0.04, '#e2e8f0');
       groundGrad.addColorStop(0.12, '#94a3b8');
@@ -868,10 +840,24 @@
       ctx.restore();
     },
 
+    /**
+     * Distance Markers (SCRUM-186)
+     * Renders authentic FIS markers adapted to the steep hill geometry:
+     * - Blue P-Point (Knoll / Bula limit)
+     * - Bright Red K-Point (Critical point)
+     * - Neon Yellow / Gold HS-Point (Hill Size)
+     * - Emerald Green Hill Record line with official distance and record-holder banner
+     */
     _drawDistanceMarkers(ctx, hill) {
       ctx.save();
-      const physics = window.SkiPhysics;
-      const getGroundY = physics ? physics.getGroundY : null;
+      const getGroundY = (window.HillData && typeof window.HillData.getGroundY === 'function')
+        ? window.HillData.getGroundY
+        : (window.SkiPhysics ? window.SkiPhysics.getGroundY : null);
+
+      const getSlopeAngle = (window.HillData && typeof window.HillData.getGroundSlopeAngle === 'function')
+        ? window.HillData.getGroundSlopeAngle
+        : (window.SkiPhysics ? window.SkiPhysics.getGroundSlopeAngle : null);
+
       if (!getGroundY) {
         ctx.restore();
         return;
@@ -879,45 +865,109 @@
 
       const k = (hill && hill.kPoint) ? hill.kPoint : 120;
       const hs = (hill && hill.hsPoint) ? hill.hsPoint : Math.round(k * 1.15);
+      const p = Math.round(k * 0.78);
       const record = (hill && hill.record) ? hill.record : Math.round(hs + 4);
+      const holder = (hill && hill.recordHolder) ? hill.recordHolder : 'World Record';
 
-      // Distance lines to mark on the landing hill:
-      // Minor marks every 10m
-      // Major markers: K-Point (Red line), HS-Point (Yellow line), Record (Green line)
+      // FIS Landing markers along steep mountain slope
       const markers = [
-        { dist: Math.round(k * 0.8), label: `${Math.round(k * 0.8)}m`, color: '#64748b', isSpecial: false },
-        { dist: 100, label: '100m', color: '#94a3b8', isSpecial: false },
-        { dist: k, label: `K-${k}m`, color: '#ef4444', isSpecial: true, banner: 'K-POINT' },
-        { dist: hs, label: `HS-${hs}m`, color: '#f59e0b', isSpecial: true, banner: 'HILL SIZE' },
-        { dist: record, label: `REC ${record}m`, color: '#10b981', isSpecial: true, banner: 'RECORD' }
+        {
+          dist: p,
+          label: `P-${p}m`,
+          banner: 'P-POINT',
+          color: '#38bdf8', // Blue P-point (Bula)
+          lineWidth: 2.8,
+          isMajor: true
+        },
+        {
+          dist: Math.round(k * 0.9),
+          label: `${Math.round(k * 0.9)}m`,
+          banner: null,
+          color: '#94a3b8',
+          lineWidth: 1.2,
+          isMajor: false
+        },
+        {
+          dist: k,
+          label: `K-${k}m`,
+          banner: 'K-POINT',
+          color: '#ef4444', // FIS Bright Red K-Point line
+          lineWidth: 3.5,
+          isMajor: true,
+          glowColor: 'rgba(239, 68, 68, 0.45)'
+        },
+        {
+          dist: hs,
+          label: `HS-${hs}m`,
+          banner: 'HILL SIZE',
+          color: '#fbbf24', // FIS Neon Yellow/Gold HS line
+          lineWidth: 3.2,
+          isMajor: true,
+          glowColor: 'rgba(251, 191, 36, 0.4)'
+        },
+        {
+          dist: record,
+          label: `REC ${record}m`,
+          banner: `RECORD: ${holder} (${record}m)`,
+          color: '#10b981', // Emerald Green Hill Record Line
+          lineWidth: 3.5,
+          isMajor: true,
+          glowColor: 'rgba(16, 185, 129, 0.5)'
+        }
       ];
 
-      ctx.font = 'bold 9px monospace';
-
       for (const m of markers) {
-        const wx = m.dist * 0.88; // horizontal projection of slope distance
+        // Horizontal projection along steep slope
+        const wx = m.dist * 0.88;
         const wy = getGroundY(hill, wx);
         const sp = this.worldToScreen(wx, wy);
 
-        // Marker line along slope perpendicular
-        ctx.strokeStyle = m.color;
-        ctx.lineWidth = m.isSpecial ? 3.0 : 1.2;
+        // Ground slope normal angle for perpendicular marker line
+        const slopeDeg = getSlopeAngle ? getSlopeAngle(hill, wx) : 35;
+        const normRad = ((slopeDeg - 90) * Math.PI) / 180;
 
+        const lineLen = m.isMajor ? 18 : 10;
+        const dx = Math.cos(normRad) * lineLen;
+        const dy = Math.sin(normRad) * lineLen;
+
+        // Glow for major FIS lines
+        if (m.glowColor) {
+          ctx.strokeStyle = m.glowColor;
+          ctx.lineWidth = m.lineWidth + 3.0;
+          ctx.beginPath();
+          ctx.moveTo(sp.x - dx, sp.y - dy);
+          ctx.lineTo(sp.x + dx * 0.5, sp.y + dy * 0.5);
+          ctx.stroke();
+        }
+
+        // Primary painted marker line across snow slope
+        ctx.strokeStyle = m.color;
+        ctx.lineWidth = m.lineWidth;
         ctx.beginPath();
-        ctx.moveTo(sp.x - 3, sp.y - 12);
-        ctx.lineTo(sp.x + 3, sp.y + 12);
+        ctx.moveTo(sp.x - dx, sp.y - dy);
+        ctx.lineTo(sp.x + dx * 0.5, sp.y + dy * 0.5);
         ctx.stroke();
 
-        // Flag / label banner
+        // Distance text label above line
+        ctx.font = 'bold 9px "Courier New", monospace';
         ctx.fillStyle = m.color;
-        ctx.fillText(m.label, sp.x - 14, sp.y - 16);
+        ctx.fillText(m.label, sp.x - 16, sp.y - 14);
 
+        // Banner badge for major lines
         if (m.banner) {
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
-          ctx.fillRect(sp.x - 24, sp.y + 14, 48, 12);
+          const bannerText = m.banner;
+          const textWidth = ctx.measureText(bannerText).width;
+          const boxW = textWidth + 12;
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+          ctx.fillRect(sp.x - boxW * 0.5, sp.y + 14, boxW, 13);
+          ctx.strokeStyle = m.color;
+          ctx.lineWidth = 1.0;
+          ctx.strokeRect(sp.x - boxW * 0.5, sp.y + 14, boxW, 13);
+
           ctx.fillStyle = m.color;
-          ctx.font = 'bold 8px monospace';
-          ctx.fillText(m.banner, sp.x - 22, sp.y + 23);
+          ctx.font = 'bold 8px "Courier New", monospace';
+          ctx.fillText(bannerText, sp.x - boxW * 0.5 + 6, sp.y + 24);
         }
       }
 
@@ -926,14 +976,16 @@
 
     _drawScenery(ctx, hill, physicsState) {
       ctx.save();
-      const physics = window.SkiPhysics;
-      const getGroundY = physics ? physics.getGroundY : null;
+      const getGroundY = (window.HillData && typeof window.HillData.getGroundY === 'function')
+        ? window.HillData.getGroundY
+        : (window.SkiPhysics ? window.SkiPhysics.getGroundY : null);
+
       if (!getGroundY) {
         ctx.restore();
         return;
       }
 
-      // Draw pine trees along the hill slope
+      // Pine trees along slope
       for (const tree of this.pineTrees) {
         const gy = getGroundY(hill, tree.worldX);
         const sp = this.worldToScreen(tree.worldX, gy);
@@ -956,20 +1008,17 @@
         ctx.fill();
       }
 
-      // Draw cheering spectators alongside landing zone
+      // Cheering crowd spectators
       const now = performance.now() * 0.003;
       for (const fan of this.cheeringCrowd) {
         const gy = getGroundY(hill, fan.worldX);
         const sp = this.worldToScreen(fan.worldX, gy);
 
-        // Bob up and down when flight distance is great or landing
         const bob = Math.sin(now * fan.bobSpeed + fan.bobOffset) * 2.2;
         const headY = sp.y - 10 + bob;
 
         ctx.fillStyle = fan.color;
-        // Torso / coat
         ctx.fillRect(sp.x - 1.5, headY + 3, 3, 5);
-        // Head
         ctx.beginPath();
         ctx.arc(sp.x, headY + 1.5, 1.8, 0, Math.PI * 2);
         ctx.fill();
@@ -1000,16 +1049,11 @@
       ctx.restore();
     },
 
-    /**
-     * Draws the retro pixel ski jumper sprite with realistic body posture
-     * Transitions between Crouch, Flight V-Style, Telemark, and Crash.
-     */
     _drawSkier(ctx, physicsState) {
       ctx.save();
       const sp = this.worldToScreen(physicsState.x, physicsState.y);
 
       ctx.translate(sp.x, sp.y);
-      // Pitch angle rotation (degrees to radians)
       const pitchRad = ((physicsState.angle || 0) * Math.PI) / 180;
       ctx.rotate(pitchRad);
 
@@ -1026,7 +1070,6 @@
       } else if (phase === 'INRUN' || phase === 'GATE') {
         this._renderInrunCrouchPose(ctx);
       } else {
-        // Standard two-footed landing / stopped
         this._renderUprightPose(ctx);
       }
 
@@ -1034,35 +1077,29 @@
     },
 
     _renderInrunCrouchPose(ctx) {
-      // Skis (parallel to inrun track)
-      ctx.strokeStyle = '#f59e0b'; // golden yellow racing skis
+      ctx.strokeStyle = '#f59e0b';
       ctx.lineWidth = 2.2;
       ctx.beginPath();
       ctx.moveTo(-16, 2);
       ctx.lineTo(16, 2);
       ctx.stroke();
 
-      // Ski tips curved up
       ctx.beginPath();
       ctx.moveTo(16, 2);
       ctx.lineTo(19, -1);
       ctx.stroke();
 
-      // Tucked aerodynamic crouch: boots, bent knees, horizontal back, helmet
-      // Boots
       ctx.fillStyle = '#1e293b';
       ctx.fillRect(-3, 0, 6, 2);
 
-      // Thighs & Torso tucked low
-      ctx.strokeStyle = '#ef4444'; // Red suit
+      ctx.strokeStyle = '#ef4444';
       ctx.lineWidth = 3.5;
       ctx.beginPath();
       ctx.moveTo(0, 0);
-      ctx.lineTo(-4, -5); // knees forward
-      ctx.lineTo(5, -6);  // tucked torso
+      ctx.lineTo(-4, -5);
+      ctx.lineTo(5, -6);
       ctx.stroke();
 
-      // Arms tucked back
       ctx.strokeStyle = '#38bdf8';
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -1070,43 +1107,35 @@
       ctx.lineTo(-7, -4);
       ctx.stroke();
 
-      // Helmet & Visor
-      ctx.fillStyle = '#f8fafc'; // white helmet
+      ctx.fillStyle = '#f8fafc';
       ctx.beginPath();
       ctx.arc(7, -7, 3, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#f59e0b'; // visor
+      ctx.fillStyle = '#f59e0b';
       ctx.fillRect(8, -8, 2, 2);
     },
 
     _renderFlightPose(ctx, lean) {
-      // Skis in V-Style
-      // Left ski (tilted up slightly) & right ski (tilted down slightly to create perspective V)
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 2.4;
 
-      // Top ski
       ctx.beginPath();
       ctx.moveTo(-18, 1);
       ctx.lineTo(18, -2);
-      ctx.lineTo(21, -5); // tip
+      ctx.lineTo(21, -5);
       ctx.stroke();
 
-      // Bottom ski
       ctx.beginPath();
       ctx.moveTo(-17, 3);
       ctx.lineTo(17, 5);
       ctx.lineTo(20, 3);
       ctx.stroke();
 
-      // Jumper body stretched forward over the skis
-      // Lean shifts torso forward/backward (-1 lean back, +1 lean forward)
       const forwardShift = 2 + lean * 3.5;
       const headX = 8 + forwardShift;
       const headY = -8 + lean * 2.0;
 
-      // Legs stretched straight back into skis
-      ctx.strokeStyle = '#ef4444'; // Racing suit
+      ctx.strokeStyle = '#ef4444';
       ctx.lineWidth = 3.8;
       ctx.beginPath();
       ctx.moveTo(-2, 2);
@@ -1114,7 +1143,6 @@
       ctx.lineTo(headX, headY);
       ctx.stroke();
 
-      // Arms spread wide beside torso for aerodynamic stability
       ctx.strokeStyle = '#0284c7';
       ctx.lineWidth = 2.0;
       ctx.beginPath();
@@ -1122,50 +1150,43 @@
       ctx.lineTo(headX - 10, headY + 4);
       ctx.stroke();
 
-      // Helmet & Google
       ctx.fillStyle = '#f8fafc';
       ctx.beginPath();
       ctx.arc(headX, headY, 3.2, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#0284c7'; // blue goggles
+      ctx.fillStyle = '#0284c7';
       ctx.fillRect(headX + 1, headY - 1, 2, 2);
     },
 
     _renderTelemarkPose(ctx) {
-      // Classical Telemark landing: one ski forward, one ski back, knees bent, arms outstretched
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 2.4;
 
-      // Front ski
       ctx.beginPath();
       ctx.moveTo(-12, 1);
       ctx.lineTo(20, 1);
       ctx.lineTo(23, -2);
       ctx.stroke();
 
-      // Rear ski
       ctx.beginPath();
       ctx.moveTo(-20, 2);
       ctx.lineTo(10, 2);
       ctx.lineTo(13, -1);
       ctx.stroke();
 
-      // Jumper body in lunged Telemark stance
       ctx.strokeStyle = '#ef4444';
       ctx.lineWidth = 3.6;
       ctx.beginPath();
-      ctx.moveTo(-6, 2);  // back knee deep bend
+      ctx.moveTo(-6, 2);
       ctx.lineTo(-2, -5);
-      ctx.lineTo(6, 1);   // front knee lunged
+      ctx.lineTo(6, 1);
       ctx.stroke();
 
-      // Torso upright & proud
       ctx.beginPath();
       ctx.moveTo(-1, -5);
       ctx.lineTo(0, -14);
       ctx.stroke();
 
-      // Arms open wide in graceful balance
       ctx.strokeStyle = '#38bdf8';
       ctx.lineWidth = 2.2;
       ctx.beginPath();
@@ -1175,7 +1196,6 @@
       ctx.lineTo(8, -16);
       ctx.stroke();
 
-      // Helmet
       ctx.fillStyle = '#f8fafc';
       ctx.beginPath();
       ctx.arc(0, -16, 3.2, 0, Math.PI * 2);
@@ -1183,7 +1203,6 @@
     },
 
     _renderUprightPose(ctx) {
-      // Skis
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 2.4;
       ctx.beginPath();
@@ -1192,7 +1211,6 @@
       ctx.lineTo(20, -1);
       ctx.stroke();
 
-      // Jumper body upright
       ctx.strokeStyle = '#ef4444';
       ctx.lineWidth = 3.6;
       ctx.beginPath();
@@ -1201,7 +1219,6 @@
       ctx.lineTo(2, -14);
       ctx.stroke();
 
-      // Arms at sides
       ctx.strokeStyle = '#38bdf8';
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -1209,7 +1226,6 @@
       ctx.lineTo(-2, -5);
       ctx.stroke();
 
-      // Helmet
       ctx.fillStyle = '#f8fafc';
       ctx.beginPath();
       ctx.arc(2, -16, 3.2, 0, Math.PI * 2);
@@ -1217,23 +1233,19 @@
     },
 
     _renderCrashPose(ctx) {
-      // Detached flying skis & tumble animation
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 2.2;
 
-      // Broken ski 1
       ctx.beginPath();
       ctx.moveTo(-12, -8);
       ctx.lineTo(-2, -16);
       ctx.stroke();
 
-      // Broken ski 2
       ctx.beginPath();
       ctx.moveTo(8, -12);
       ctx.lineTo(18, -4);
       ctx.stroke();
 
-      // Tumbled skier body
       ctx.strokeStyle = '#dc2626';
       ctx.lineWidth = 3.6;
       ctx.beginPath();
@@ -1242,13 +1254,11 @@
       ctx.lineTo(-2, -8);
       ctx.stroke();
 
-      // Helmet rolling in snow
       ctx.fillStyle = '#f8fafc';
       ctx.beginPath();
       ctx.arc(6, -2, 3.2, 0, Math.PI * 2);
       ctx.fill();
 
-      // Snow puff dust
       ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
       ctx.beginPath();
       ctx.arc(0, -2, 6, 0, Math.PI * 2);
@@ -1281,14 +1291,12 @@
     },
 
     _drawRetroCRT(ctx) {
-      // Retro scanlines
       ctx.save();
       ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
       for (let y = 0; y < this.height; y += 3) {
         ctx.fillRect(0, y, this.width, 1);
       }
 
-      // Vignette shadow on borders
       const vignette = ctx.createRadialGradient(
         this.width * 0.5, this.height * 0.5, this.width * 0.42,
         this.width * 0.5, this.height * 0.5, this.width * 0.65

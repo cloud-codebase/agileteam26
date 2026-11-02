@@ -15,7 +15,7 @@
         <div class="branding">
           <span class="arcade-title">🎿 SKI JUMPS DELUXE</span>
           <span class="title-sub">RETRO 1998</span>
-          <span class="season-badge">WORLD CUP SPRINT 2.0</span>
+          <span class="season-badge">WORLD CUP SPRINT 4.0</span>
         </div>
 
         <div class="hill-meta-bar">
@@ -139,6 +139,37 @@
         <!-- Take-off Rating Feedback Popup Badge (SCRUM-181) -->
         <div id="takeoff-feedback-badge" class="takeoff-feedback-badge hidden rating-perfect">
           <span class="feedback-text">PERFECT! (+LIFT)</span>
+        </div>
+
+        <!-- In-Flight Telemetry HUD Overlay (SCRUM-186) -->
+        <div id="flight-telemetry-hud" class="flight-telemetry-hud hidden">
+          <div class="telemetry-header">
+            <span class="telemetry-dot"></span>
+            <span class="telemetry-title">FLIGHT RADAR • TELEMETRY</span>
+          </div>
+          <div class="telemetry-metrics-grid">
+            <div class="telemetry-card alt-card">
+              <span class="telemetry-label">ALTITUDE</span>
+              <div class="telemetry-val-wrap">
+                <span id="telemetry-altitude" class="telemetry-val">0.0m</span>
+              </div>
+              <span class="telemetry-sub">ABOVE SLOPE</span>
+            </div>
+            <div class="telemetry-card speed-card">
+              <span class="telemetry-label">AIR SPEED</span>
+              <div class="telemetry-val-wrap">
+                <span id="telemetry-speed" class="telemetry-val">0.0 km/h</span>
+              </div>
+              <span class="telemetry-sub">HORIZ + VERT</span>
+            </div>
+            <div class="telemetry-card glide-card">
+              <span class="telemetry-label">GLIDE RATIO</span>
+              <div class="telemetry-val-wrap">
+                <span id="telemetry-glide-ratio" class="telemetry-val">--</span>
+              </div>
+              <span class="telemetry-sub">VX / VY CUSHION</span>
+            </div>
+          </div>
         </div>
 
         <!-- Center Flight Distance Tracker -->
@@ -307,7 +338,6 @@
 
   <!-- Relative script tags (Never leading slashes!) -->
   <script src="js/hills.js"></script>
-  <!-- Future wave scripts are referenced defensively if present -->
   <script src="js/physics.js"></script>
   <script src="js/renderer.js"></script>
   <script src="js/audio.js"></script>
@@ -331,8 +361,6 @@
         var leaderboardBody = document.getElementById('leaderboard-body');
         var modalCloseBtn = document.getElementById('modal-close-btn');
         var scoreModal = document.getElementById('score-modal');
-        var btnJump = document.getElementById('btn-jump-action');
-        var btnReset = document.getElementById('btn-reset');
 
         // Function to update hill UI based on selected hill
         function updateHillUI(hillId) {
@@ -402,24 +430,6 @@
           modalCloseBtn.addEventListener('click', function () {
             scoreModal.classList.remove('active');
           });
-        }
-
-        // Fallback basic canvas background until Wave 1 physics/renderer mounts
-        var canvas = document.getElementById('game-canvas');
-        if (canvas) {
-          var ctx = canvas.getContext('2d');
-          if (ctx) {
-            // Draw placeholder winter mountain backdrop
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#f8fafc';
-            ctx.font = 'bold 20px "Courier New", monospace';
-            ctx.textAlign = 'center';
-            ctx.fillText('⛷️ SKI JUMPS DELUXE 1998', canvas.width / 2, canvas.height / 2 - 20);
-            ctx.font = '14px "Courier New", monospace';
-            ctx.fillStyle = '#38bdf8';
-            ctx.fillText('Engine Ready • Press START JUMP to begin competition', canvas.width / 2, canvas.height / 2 + 15);
-          }
         }
 
         // Initial fetch
