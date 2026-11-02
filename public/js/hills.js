@@ -1,6 +1,7 @@
 /**
  * Retro Ski Jumps - Hill Profiles and Master Configuration
  * Exposes window.HillData for physics engine, renderer, HUD and tournament scoring
+ * Sprint 3.0 (SCRUM-180): Added takeoffConfig (warningZoneLen, sweetSpotLen, lipHeight)
  */
 (function (global) {
   'use strict';
@@ -18,6 +19,11 @@
       tableAngle: 10.5, // degrees takeoff lip
       tableHeight: 3.0, // meters
       inrunLength: 98.7, // meters
+      takeoffConfig: {
+        warningZoneLen: 12.0, // meters before lip
+        sweetSpotLen: 2.8,    // optimal jump zone (e.g. 0.4m - 3.2m before lip)
+        lipHeight: 3.0        // table height in meters
+      },
       landingCurve: {
         r1: 105,
         r2: 90,
@@ -47,6 +53,11 @@
       tableAngle: 11.2,
       tableHeight: 3.8,
       inrunLength: 133.8,
+      takeoffConfig: {
+        warningZoneLen: 14.0,
+        sweetSpotLen: 3.2,
+        lipHeight: 3.8
+      },
       landingCurve: {
         r1: 130,
         r2: 120,
@@ -76,6 +87,11 @@
       tableAngle: 10.5,
       tableHeight: 2.9,
       inrunLength: 88.2,
+      takeoffConfig: {
+        warningZoneLen: 11.0,
+        sweetSpotLen: 2.6,
+        lipHeight: 2.9
+      },
       landingCurve: {
         r1: 100,
         r2: 85,
@@ -105,6 +121,11 @@
       tableAngle: 11.0,
       tableHeight: 3.2,
       inrunLength: 95.5,
+      takeoffConfig: {
+        warningZoneLen: 12.0,
+        sweetSpotLen: 2.8,
+        lipHeight: 3.2
+      },
       landingCurve: {
         r1: 104,
         r2: 88,

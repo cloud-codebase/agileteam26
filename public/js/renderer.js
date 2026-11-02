@@ -1,12 +1,12 @@
 /**
  * renderer.js - 2D Canvas Procedural Ski Jump Renderer
- * Sprint 1.0 (SCRUM-173) & Sprint 2.0 (SCRUM-176)
+ * Sprint 1.0 (SCRUM-173), Sprint 2.0 (SCRUM-176), Sprint 3.0 (SCRUM-180)
  *
- * Sprint 2.0 Enhancements (SCRUM-176):
- * - High-contrast starting tower structure with metallic scaffolding and yellow/black diagonal hazard safety pads.
- * - High-contrast starting bar beam directly across inrun gate slot behind skier with neon safety pads.
- * - Dynamic camera focus: targetScale ~4.2 in GATE phase focusing closely on tower gate, smoothly transitioning to ~3.4 on inrun descent.
- * - Active gate clearance animation: bar pivoting upward/clearing with dynamic snow dust puff when jumper pushes off.
+ * Sprint 3.0 Enhancements (SCRUM-180):
+ * - High-contrast take-off table lip at (x=0, y=0) with neon edge stop block & vertical threshold flags (🚩 EDGE / TAKEOFF).
+ * - Red & white warning track safety chevrons/stripes along the inrun track bed across the final warning zone (e.g. 12m).
+ * - Sweet spot zone (0.4m - 3.2m before lip) highlighted with glowing cyan/lime neon border & dynamic pulsation when skier enters zone.
+ * - Smooth camera framing ensuring table lip and warning track are prominently visible ahead of skier before launch.
  */
 
 (function (window) {
@@ -118,7 +118,7 @@
 
     /**
      * Updates camera smoothly tracking the jumper
-     * Sprint 2.0: Dynamic gate zoom: targetScale ~4.2 when mounted on gate, transitioning to ~3.4 on inrun descent
+     * Sprint 3.0: In inrun phase, leads the camera ahead of skier towards x=0 so take-off edge is visible.
      */
     updateCamera(physicsState) {
       if (!physicsState) return;
@@ -134,10 +134,10 @@
         this.camera.targetY = py - 3;
         this.camera.targetScale = 4.2;
       } else if (phase === 'INRUN') {
-        // Zoom pulls back smoothly for inrun descent overview
-        this.camera.targetX = px + 12;
-        this.camera.targetY = py - 4;
-        this.camera.targetScale = 3.4;
+        // Camera leads ahead towards table lip (x=0) so player can anticipate takeoff timing
+        this.camera.targetX = px + 14;
+        this.camera.targetY = py - 3.5;
+        this.camera.targetScale = 3.35;
       } else if (phase === 'FLIGHT') {
         // Broad dynamic view giving wide angle of flight curve
         this.camera.targetX = px + 18;
@@ -343,9 +343,10 @@
     },
 
     /**
-     * Enhanced Inrun Structure Rendering (SCRUM-176)
+     * Enhanced Inrun Structure Rendering (SCRUM-176 & SCRUM-180)
      * Renders heavy metallic scaffolding, yellow/black hazard diagonal stripes, starting tower,
-     * high-contrast starting bar beam directly across inrun gate slot behind skier, and lift animation.
+     * high-contrast starting bar beam, and the Sprint 3.0 take-off warning track, sweet spot glow,
+     * high-contrast table lip, and guide flags.
      */
     _drawInrunStructure(ctx, hill, physicsState) {
       ctx.save();
@@ -357,11 +358,13 @@
         return;
       }
 
-      const samples = 18;
+      const samples = 36; // Increased resolution for smoother track and warning stripes
       const points = [];
+      const worldPoints = [];
       for (let i = 0; i <= samples; i++) {
         const s = i / samples;
         const pos = getInrunPos(hill, s);
+        worldPoints.push(pos);
         const screenPos = this.worldToScreen(pos.x, pos.y);
         points.push(screenPos);
       }
@@ -376,7 +379,7 @@
       ctx.lineWidth = 2.8;
 
       // Scaffolding pillars downwards with dual metallic depth
-      for (let i = 0; i < points.length; i += 3) {
+      for (let i = 0; i < points.length; i += 4) {
         // Main pillar
         ctx.strokeStyle = '#475569';
         ctx.lineWidth = 3.0;
@@ -394,17 +397,17 @@
         ctx.stroke();
 
         // Cross bracing trusses
-        if (i + 3 < points.length) {
+        if (i + 4 < points.length) {
           ctx.strokeStyle = '#334155';
           ctx.lineWidth = 2.2;
           ctx.beginPath();
           ctx.moveTo(points[i].x, points[i].y + 35);
-          ctx.lineTo(points[i + 3].x, points[i + 3].y + 115);
+          ctx.lineTo(points[i + 4].x, points[i + 4].y + 115);
           ctx.stroke();
 
           ctx.beginPath();
           ctx.moveTo(points[i].x, points[i].y + 115);
-          ctx.lineTo(points[i + 3].x, points[i + 3].y + 35);
+          ctx.lineTo(points[i + 4].x, points[i + 4].y + 35);
           ctx.stroke();
         }
       }
@@ -429,13 +432,204 @@
       }
       ctx.stroke();
 
-      // 4. Takeoff Table Lip (x = 0, y = 0)
-      const lipScreen = points[points.length - 1];
-      ctx.fillStyle = '#dc2626';
-      ctx.fillRect(lipScreen.x - 2, lipScreen.y - 2, 4, 12);
+      // 4. Sprint 3.0 (SCRUM-180): High-Contrast Takeoff Zone Rendering
+      // Renders warning stripes, sweet spot pulsing glow, table lip, stop block, and threshold guide flags
+      this._drawTakeoffZone(ctx, hill, physicsState);
 
       // 5. Draw High-Contrast Starting Gate Slot, Hazard Pads & Bar Beam
       this._drawStartingGate(ctx, gateScreen, physicsState);
+
+      ctx.restore();
+    },
+
+    /**
+     * Sprint 3.0 (SCRUM-180): Take-Off Zone Visualization
+     * - Warning track: alternating red/white safety chevrons/stripes along the final warningZoneLen meters leading to lip.
+     * - Sweet spot zone: glowing cyan/lime neon border with dynamic pulse when skier enters.
+     * - High-contrast table lip at (x=0, y=0) with neon edge stop block & vertical guide flags (🚩 EDGE / TAKEOFF).
+     */
+    _drawTakeoffZone(ctx, hill, physicsState) {
+      const physics = window.SkiPhysics;
+      const getInrunPos = physics ? physics.getInrunPos : null;
+      if (!getInrunPos) return;
+
+      const inrunLen = (hill && hill.inrunLength) ? hill.inrunLength : 98.7;
+      const takeoffCfg = (hill && hill.takeoffConfig) ? hill.takeoffConfig : {
+        warningZoneLen: 12.0,
+        sweetSpotLen: 2.8,
+        lipHeight: 3.0
+      };
+
+      const warnLen = takeoffCfg.warningZoneLen || 12.0;
+      const sweetLen = takeoffCfg.sweetSpotLen || 2.8;
+
+      ctx.save();
+
+      // 1. Render Red/White Warning Track Stripes along the inrun track bed across warningZoneLen
+      // Samples along the inrun approaching s = 1.0 (lip at x=0, y=0)
+      const numStripes = 16;
+      for (let i = 0; i < numStripes; i++) {
+        // Distance remaining from lip for segment [dist1, dist2]
+        const dist1 = warnLen * (1 - (i / numStripes));
+        const dist2 = warnLen * (1 - ((i + 1) / numStripes));
+
+        const s1 = Math.max(0, 1 - (dist1 / inrunLen));
+        const s2 = Math.max(0, 1 - (dist2 / inrunLen));
+
+        const pos1 = getInrunPos(hill, s1);
+        const pos2 = getInrunPos(hill, s2);
+
+        const sp1 = this.worldToScreen(pos1.x, pos1.y);
+        const sp2 = this.worldToScreen(pos2.x, pos2.y);
+
+        // Alternating red and white/silver chevrons
+        const isRed = (i % 2 === 0);
+        ctx.strokeStyle = isRed ? '#ef4444' : '#ffffff';
+        ctx.lineWidth = 4.5;
+        ctx.beginPath();
+        ctx.moveTo(sp1.x, sp1.y);
+        ctx.lineTo(sp2.x, sp2.y);
+        ctx.stroke();
+
+        // High-contrast diagonal hazard hatch marks on track bed
+        if (i % 2 === 0) {
+          ctx.strokeStyle = '#facc15'; // hazard yellow border
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(sp1.x, sp1.y - 2);
+          ctx.lineTo(sp1.x + 1.5, sp1.y + 2);
+          ctx.stroke();
+        }
+      }
+
+      // 2. Render Sweet Spot Zone (e.g. 0.4m to 3.2m before lip) with pulsing neon glow
+      // Check if skier is currently within warning / sweet spot zone during INRUN
+      const currentX = (physicsState && typeof physicsState.x === 'number') ? physicsState.x : -999;
+      const phase = physicsState ? physicsState.phase : 'GATE';
+      const inrunProgress = (physicsState && typeof physicsState.inrunProgress === 'number') ? physicsState.inrunProgress : 0;
+      const distRemaining = (1 - inrunProgress) * inrunLen;
+      const inSweetSpot = (phase === 'INRUN' && distRemaining >= 0.2 && distRemaining <= (sweetLen + 0.6));
+
+      const sweetStartDist = sweetLen + 0.4;
+      const sweetEndDist = 0.4;
+      const sSweet1 = Math.max(0, 1 - (sweetStartDist / inrunLen));
+      const sSweet2 = Math.max(0, 1 - (sweetEndDist / inrunLen));
+
+      const sweetPos1 = getInrunPos(hill, sSweet1);
+      const sweetPos2 = getInrunPos(hill, sSweet2);
+
+      const spSweet1 = this.worldToScreen(sweetPos1.x, sweetPos1.y);
+      const spSweet2 = this.worldToScreen(sweetPos2.x, sweetPos2.y);
+
+      // Pulse alpha based on performance.now()
+      const now = performance.now() * 0.008;
+      const pulse = inSweetSpot ? (0.75 + 0.25 * Math.sin(now * 3.5)) : (0.55 + 0.2 * Math.sin(now * 1.5));
+      const glowColor = inSweetSpot ? `rgba(34, 197, 94, ${pulse})` : `rgba(56, 189, 248, ${pulse})`;
+
+      // Outer sweet spot glow line
+      ctx.save();
+      ctx.lineWidth = inSweetSpot ? 8.0 : 6.0;
+      ctx.strokeStyle = glowColor;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(spSweet1.x, spSweet1.y - 1);
+      ctx.lineTo(spSweet2.x, spSweet2.y - 1);
+      ctx.stroke();
+
+      // Inner intense neon core line
+      ctx.lineWidth = inSweetSpot ? 3.2 : 2.4;
+      ctx.strokeStyle = inSweetSpot ? '#86efac' : '#a5f3fc';
+      ctx.beginPath();
+      ctx.moveTo(spSweet1.x, spSweet1.y - 1);
+      ctx.lineTo(spSweet2.x, spSweet2.y - 1);
+      ctx.stroke();
+
+      // Sweet spot ground text label
+      ctx.fillStyle = inSweetSpot ? '#22c55e' : '#38bdf8';
+      ctx.font = 'bold 6px monospace';
+      ctx.fillText('⚡ SWEET SPOT', spSweet1.x - 2, spSweet1.y - 8);
+      ctx.restore();
+
+      // 3. High-Contrast Table Lip at (x=0, y=0)
+      const lipWorld = getInrunPos(hill, 1.0); // exactly (0, 0)
+      const lipScreen = this.worldToScreen(lipWorld.x, lipWorld.y);
+
+      // Vertical table drop face (e.g. 3m table height down to knoll start)
+      const lipHeightWorld = takeoffCfg.lipHeight || 3.0;
+      const lipDropBottom = this.worldToScreen(0, lipHeightWorld);
+
+      // Solid dark-slate table foundation block
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(lipScreen.x - 6, lipScreen.y, 6, lipDropBottom.y - lipScreen.y + 4);
+
+      // High-contrast edge stop block (bright red/amber neon hazard pad)
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(lipScreen.x - 3, lipScreen.y - 2, 4, 16);
+
+      // Golden safety hazard outline
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 1.4;
+      ctx.strokeRect(lipScreen.x - 3, lipScreen.y - 2, 4, 16);
+
+      // Brilliant neon white line right on the edge threshold (x = 0)
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(lipScreen.x, lipScreen.y - 4);
+      ctx.lineTo(lipScreen.x, lipScreen.y + 14);
+      ctx.stroke();
+
+      // 4. Threshold Guide Flags (🚩 EDGE / TAKEOFF)
+      // Flag pole
+      ctx.strokeStyle = '#e2e8f0'; // bright silver pole
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(lipScreen.x, lipScreen.y);
+      ctx.lineTo(lipScreen.x, lipScreen.y - 28);
+      ctx.stroke();
+
+      // Pole finial
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.arc(lipScreen.x, lipScreen.y - 28, 2.0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Pennant Flag flapping slightly
+      const flagWave = Math.sin(now * 2.0) * 1.5;
+      ctx.fillStyle = '#dc2626'; // bright crimson red flag
+      ctx.beginPath();
+      ctx.moveTo(lipScreen.x, lipScreen.y - 28);
+      ctx.lineTo(lipScreen.x + 18 + flagWave, lipScreen.y - 22);
+      ctx.lineTo(lipScreen.x, lipScreen.y - 16);
+      ctx.closePath();
+      ctx.fill();
+
+      // Second marker flag on opposite guide rail for 3D depth
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(lipScreen.x - 8, lipScreen.y - 2);
+      ctx.lineTo(lipScreen.x - 8, lipScreen.y - 22);
+      ctx.stroke();
+
+      ctx.fillStyle = '#eab308'; // yellow guide flag
+      ctx.beginPath();
+      ctx.moveTo(lipScreen.x - 8, lipScreen.y - 22);
+      ctx.lineTo(lipScreen.x + 4 + flagWave, lipScreen.y - 18);
+      ctx.lineTo(lipScreen.x - 8, lipScreen.y - 14);
+      ctx.closePath();
+      ctx.fill();
+
+      // High-contrast textual banner badge above edge: "🚩 TAKEOFF / EDGE"
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+      ctx.fillRect(lipScreen.x - 18, lipScreen.y - 42, 38, 11);
+      ctx.strokeStyle = inSweetSpot ? '#22c55e' : '#ef4444';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(lipScreen.x - 18, lipScreen.y - 42, 38, 11);
+
+      ctx.fillStyle = inSweetSpot ? '#86efac' : '#ffffff';
+      ctx.font = 'bold 6.5px monospace';
+      ctx.fillText('🚩 EDGE', lipScreen.x - 14, lipScreen.y - 34);
 
       ctx.restore();
     },
