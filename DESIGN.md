@@ -1,13 +1,13 @@
-# DESIGN.md — Sprint 2.0 Architecture & Technical Blueprint
+# DESIGN.md — Sprint 3.0 Architecture & Technical Blueprint
 
 ## 1. System Architecture & Cloud Run Container
 - **App Type**: Tiered / Single-Container Node.js 20 Express application on Port 8080.
-- **Port & Serving**: `server.js` listens on `0.0.0.0:8080`, serves static files from `public/`, and exposes high scores / leaderboard REST API endpoints.
+- **Port & Serving**: `server.js` listens on `0.0.0.0:8080`, serves static files from `public/`, and exposes high scores / leaderboard REST API endpoints (`/api/leaderboard`, `/api/hills`).
 - **Subpath Safe Rules**: Load balancer routes `https://.../demo/index.html` -> container `/index.html`.
   - In `index.html`: Relative assets (`href="css/style.css"`, `src="js/..."`). No leading slashes!
   - In JS fetch calls: Relative API paths (`fetch('api/leaderboard')`, `fetch('api/hills')`). Never `/api/...`!
 
-## 2. Modular File Tree & Ownership
+## 2. Modular File Tree & Ownership (Sprint 3.0)
 ```text
 ├── Dockerfile                  # Node:20-alpine container exposing port 8080 (Preserved)
 ├── package.json                # Express server dependencies (Preserved)
@@ -15,59 +15,68 @@
 ├── cloudbuild.yaml             # CI/CD deployment configuration (Preserved)
 ├── README.md                   # Project overview & instructions (Preserved)
 └── public/
-    ├── index.html              # Shell, CRT filter, HUD overlays, canvas, modals (SCRUM-177)
-    ├── css/
-    │   └── style.css           # Retro pixel/CRT scanline aesthetic & winter styling (SCRUM-177)
-    ├── js/
-    │   ├── hills.js            # Hill data (Zakopane K-120, Planica K-185, Wisla K-105) (Preserved)
-    │   ├── physics.js          # Inrun, takeoff kinematics, 2D aerodynamics, wind, landing (Preserved)
-    │   ├── renderer.js         # HTML5 Canvas rendering of profile, starting bar, jumper (SCRUM-176)
-    │   ├── audio.js            # Web Audio SFX: FIS starting beeps, gate clearance (SCRUM-178)
-    │   ├── tournament.js       # Round manager, 5-judge FIS tournament scoring (Preserved)
-    │   └── game.js             # State orchestrator, gate countdown & readiness states (SCRUM-178)
+    ├── index.html              # Shell, HUD overlays, #takeoff-timing-bar, #takeoff-prompt-badge (SCRUM-181)
+    ├── css/style.css           # CRT styling, timing gauge meter, jump window & feedback badges (SCRUM-181)
+    └── js/
+        ├── hills.js            # Hill data (takeoff lip thresholds, warnZone, sweetSpot) (SCRUM-180)
+        ├── renderer.js         # Take-off edge lip, warning track, guide flags, sweet spot glow (SCRUM-180)
+        ├── physics.js          # Take-off aerodynamic lift impulse, flight glide overhaul (SCRUM-182)
+        ├── game.js             # Real-time timing meter tracking, input triggers, HUD binding (SCRUM-182)
+        ├── audio.js            # Synthesized launch chime, timing rating SFX, aero glide wind (SCRUM-182)
+        └── tournament.js       # FIS tournament & judge scoring (Preserved)
 ```
 
-## 3. Sprint 2.0 Feature: High-Contrast Starting Gate & FIS Readiness Prompts
+## 3. Sprint 3.0 Feature Specification: Take-Off Edge & Jump Timing Engine
+*Feedback*: "Make the take-off point more clear. When is the best time to press jump? Where is the edge? Users are jumping down right after start instead of flying."
 
-### User Feedback:
-*"Make the starting bar more visible for the player as it is hard to detect when to start the jump."*
+### A. Take-Off Edge Visualization & Hill Data (`renderer.js`, `hills.js` - SCRUM-180)
+- **`hills.js` extensions**: Add `takeoffConfig: { warningZoneLen: 12.0, sweetSpotLen: 2.8, lipHeight: 3.0 }` to each hill profile.
+- **`renderer.js` extensions**:
+  - `_drawTakeoffZone(ctx, hill, inrunPoints)`:
+    - High-contrast edge lip at table exit `(x=0, y=0)`: bright neon red/amber edge stop block with vertical marker flags (`🚩 EDGE / TAKEOFF`).
+    - Inrun warning track: 12m preceding edge rendered with alternating red/white safety chevrons / stripes along the track bed.
+    - Sweet Spot Glow: 0.5m-3.0m before lip marked with glowing cyan/lime neon border and dynamic pulsation when skier enters zone.
+    - Camera framing: Maintain smooth zoom transition so table lip is distinctly visible ahead of skier before launch.
 
-### UI & DOM Elements (`public/index.html` & `public/css/style.css` - SCRUM-177):
-- **FIS Starting Signal Lights Box**: `#gate-signal-lights` inside `.viewport-wrapper`
-  - Child lights: `#light-red` (WAIT), `#light-yellow` (ATTENTION), `#light-green` (GO!)
-  - Class states: `.light.active` with glowing retro box-shadow (`#ef4444`, `#eab308`, `#22c55e`).
-- **Pulsing Gate Readiness Badge**: `#gate-prompt-banner` overlay across upper canvas
-  - Text: `"WAITING FOR WIND CLEARANCE..."` -> `"ATTENTION: JUMPER ON BAR"` -> `"GREEN LIGHT - PRESS SPACE OR CLICK TO START"`
-  - CSS animations: `@keyframes pulse-green`, `@keyframes neon-glow` for high visibility.
-- **Starting Bar Height Indicator**: `#gate-bar-level` inside top HUD (e.g., `BAR #12 (ELEVATED)`).
+### B. Take-Off Timing HUD Gauge & Feedback Badges (`index.html`, `style.css` - SCRUM-181)
+- **DOM Additions in `index.html`** (inside `.viewport-wrapper`):
+  - `#takeoff-hud-container`: Positioned prominently below top HUD or over center inrun view during INRUN phase.
+  - `#takeoff-timing-bar`: Progress gauge tracking distance to edge (100% -> 0%).
+    - Zones: `.zone-early` (gray/amber), `.zone-sweet` (neon green/cyan), `.zone-late` (red).
+    - `#takeoff-needle`: Live moving marker indicating current position.
+  - `#takeoff-prompt-badge`: Large retro pulsing alert appearing when entering sweet spot (`"⚡ JUMP NOW! [SPACE / CLICK] ⚡"`).
+  - `#takeoff-feedback-badge`: Rating popup on takeoff (`PERFECT! (+LIFT)`, `GREAT!`, `EARLY`, `LATE`, `MISSED`).
+- **CSS Styling in `style.css`**:
+  - CRT neon glowing borders, retro monospace font, pulsing animations (`@keyframes jumpPulse`, `@keyframes sweetGlow`).
+  - Rating badge color schemes: `#22c55e` (Perfect), `#38bdf8` (Great), `#eab308` (Early), `#ef4444` (Late).
 
-### Canvas Starting Bar Rendering (`public/js/renderer.js` - SCRUM-176):
-- **`SkiRenderer._drawInrunStructure(ctx, hill)` extension**:
-  - Render heavy steel/wooden starting tower scaffolding with high-contrast safety stripes (yellow & black diagonal hazard stripes).
-  - High-contrast starting bar beam: metallic bar positioned directly behind skier boots at `getInrunPos(hill, 0)` with neon safety pads.
-  - Active gate clearance animation: When phase transitions from `GATE` to `INRUN`, render the starting bar pivoting upward/clearing with dynamic snow dust puff.
-  - Dynamic camera focus: In `GATE` phase, zoom camera (`targetScale: 4.2`) focusing on tower gate and jumper, pulling smoothly out to `3.4` upon inrun start.
-
-### Audio & Game State Synchronization (`public/js/audio.js` & `public/js/game.js` - SCRUM-178):
-- **`SkiAudio` Interface Extensions**:
-  - `playGateBeep(type)`: Authentic FIS electronic starting beeps (Short 440Hz beep on Red/Yellow; High 880Hz confirmation beep on Green).
-  - `playGateRelease()`: Mechanical click / latch release sound when jumper pushes off bar.
-- **`SkiGame` State Machine Extensions**:
-  - Gate Sequence: When `resetJump()` is called, initiate gate readiness countdown:
-    - Phase `GATE_WAIT` (Red light, 0.6s) -> `GATE_READY` (Yellow light, 0.6s) -> `GATE_CLEAR` (Green light, prompt active).
-    - Player can only start inrun when green light is active or immediate manual start with visual feedback.
-  - Synchronize DOM lights (`#light-red`, `#light-yellow`, `#light-green`), `#gate-prompt-banner`, and audio beeps.
+### C. Take-Off Physics Engine Overhaul & Launch SFX (`physics.js`, `game.js`, `audio.js` - SCRUM-182)
+- **`physics.js` Overhaul**:
+  - Jump impulse calculation: Base upward lift impulse boosted from 2.2 m/s to 4.5–5.8 m/s depending on timing quality.
+  - Aerodynamic initial glide: Skier exits table with positive initial lift-to-drag angle, eliminating immediate ground plunge.
+  - Timing Window:
+    - `0.2m - 2.8m` before edge: `PERFECT!` (1.20x lift boost, clean V-style trajectory).
+    - `2.8m - 6.0m`: `GOOD` (1.05x lift boost).
+    - `> 6.0m`: `EARLY` (0.85x lift boost).
+    - Passed edge `< 0.0m`: `LATE` (0.80x lift boost).
+    - No jump pressed: `MISSED` (0.65x downward slide off lip).
+- **`game.js` Synchronization**:
+  - Real-time updates of `#takeoff-needle` and `#takeoff-prompt-badge` during `INRUN`.
+  - Multi-input responsiveness (Space, Enter, Click, Touch, Action Button).
+  - Activate `#takeoff-feedback-badge` with accuracy text.
+- **`audio.js` Extensions**:
+  - `playTakeoffRating(quality)`: High pitch chime for PERFECT, melodic tone for GOOD, low dull thud for EARLY/LATE.
+  - `playTakeoffLaunch()`: Enhanced satisfying dynamic air whoosh + ski pop.
 
 ## 4. Subpath Safety & Robustness Checklist
 - [x] Relative paths only: `index.html` uses `css/style.css` and `js/...`
-- [x] Fetch calls use `api/leaderboard` (no leading slash)
-- [x] Canvas and graphics: 100% canvas & procedural styling (no external asset URLs)
-- [x] Audio: 100% Web Audio API procedural synthesis (oscillator/noise buffers)
-- [x] Defensive DOM lookups with `DOMContentLoaded` and null guards
+- [x] Relative fetch calls: `api/leaderboard`, `api/hills` (no leading slash)
+- [x] 100% Procedural canvas visuals & Web Audio synthesis (zero external asset dependencies)
+- [x] Defensive DOM lookups (`DOMContentLoaded`, null-checks on every getElementById)
 
-## 5. Task-to-File Mapping & Parallel Waves (Sprint 2.0)
+## 5. Task-to-File Mapping & Parallel Waves (Sprint 3.0)
 | Task ID | Developer Focus | Target Files | Wave |
 |---|---|---|---|
-| `SCRUM-176` | High-Contrast Starting Gate Visuals & Clearance Animation | `public/js/renderer.js` (Modify/Extend) | Wave 1 (Parallel) |
-| `SCRUM-177` | Starting Gate HUD Signal Lights & Jump Timing Prompts | `public/index.html`, `public/css/style.css` (Modify/Extend) | Wave 1 (Parallel) |
-| `SCRUM-178` | Starting Gate Audio Cues & State Machine Synchronization | `public/js/audio.js`, `public/js/game.js` (Modify/Extend) | Wave 2 |
+| `SCRUM-180` | Take-Off Edge High-Contrast Lip, Warning Track & Lip Flags | `public/js/hills.js`, `public/js/renderer.js` (Modify/Extend) | Wave 1 (Parallel) |
+| `SCRUM-181` | Take-Off Timing HUD Gauge, On-Screen Jump Window & Feedback Badges | `public/index.html`, `public/css/style.css` (Modify/Extend) | Wave 1 (Parallel) |
+| `SCRUM-182` | Take-Off Physics Lift Overhaul, Responsive Inputs & Launch Audio | `public/js/physics.js`, `public/js/game.js`, `public/js/audio.js` (Modify/Extend) | Wave 2 |
