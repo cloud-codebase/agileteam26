@@ -15,7 +15,7 @@
         <div class="branding">
           <span class="arcade-title">🎿 SKI JUMPS DELUXE</span>
           <span class="title-sub">RETRO 1998</span>
-          <span class="season-badge">WORLD CUP SPRINT 1.0</span>
+          <span class="season-badge">WORLD CUP SPRINT 2.0</span>
         </div>
 
         <div class="hill-meta-bar">
@@ -65,14 +65,35 @@
             </div>
           </div>
 
-          <div class="hud-group">
-            <div class="hud-box">
-              <div class="hud-title">GATE</div>
-              <div class="hud-metric">
-                <span id="gate-indicator">12</span>
+          <!-- FIS Starting Gate Tower Signal Lights (SCRUM-177) -->
+          <div class="gate-hud-center">
+            <div id="gate-signal-lights" class="gate-signal-tower" title="FIS Starting Light Signals">
+              <div class="signal-housing">
+                <div class="signal-light-label">FIS GATE SIGNAL</div>
+                <div class="lights-row">
+                  <div id="light-red" class="signal-light light-red" title="RED: WAIT"></div>
+                  <div id="light-yellow" class="signal-light light-yellow" title="YELLOW: ATTENTION"></div>
+                  <div id="light-green" class="signal-light light-green active" title="GREEN: GO"></div>
+                </div>
               </div>
             </div>
           </div>
+
+          <div class="hud-group">
+            <div class="hud-box">
+              <div class="hud-title">STARTING GATE</div>
+              <div class="hud-metric">
+                <span id="gate-indicator">12</span>
+                <span id="gate-bar-level" class="gate-bar-badge">BAR #12 (ELEVATED)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Flashing FIS Readiness Prompt Banner (SCRUM-177) -->
+        <div id="gate-prompt-banner" class="gate-prompt-banner state-green">
+          <span class="gate-prompt-icon">🚥</span>
+          <span class="gate-prompt-text">GREEN LIGHT - PRESS SPACE OR CLICK TO START</span>
         </div>
 
         <!-- Center Flight Distance Tracker -->
@@ -248,7 +269,7 @@
   <script src="js/tournament.js"></script>
   <script src="js/game.js"></script>
 
-  <!-- UI Hook & Initialization Logic for Sprint 1 Foundation -->
+  <!-- UI Hook & Initialization Logic -->
   <script>
     (function () {
       'use strict';
