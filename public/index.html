@@ -86,6 +86,17 @@
             </div>
           </div>
 
+          <!-- Middle-Left: Interactive Starting Gate Control Widget (DESIGN.md SCRUM-194) -->
+          <div id="gateControl" class="hud-box gate-control-box">
+            <div class="hud-sub-title">BELKA FIS</div>
+            <div class="gate-control-row">
+              <button id="gateDownBtn" class="gate-btn" title="Obniż belkę (kompensacja na plus)">▼</button>
+              <div id="gateNumber" class="gate-readout" title="Aktualna belka startowa">Belka: 12</div>
+              <button id="gateUpBtn" class="gate-btn" title="Podnieś belkę (kompensacja na minus)">▲</button>
+            </div>
+            <div id="gateCompPreview" class="gate-comp-hint">Komp: +0.0 pkt</div>
+          </div>
+
           <!-- Bottom-Left: Live Speed & Altitude / Phase Indicator -->
           <div class="hud-box metrics-box">
             <div class="metric-row">
@@ -134,6 +145,7 @@
                   <div class="summary-label">ŁĄCZNA NOTA</div>
                   <div id="totalPointsDisplay" class="summary-val-gold">142.6 pkt</div>
                   <div id="summaryWindComp" class="summary-sub">Wiatr: +0.0 pkt</div>
+                  <div id="gateCompDisplay" class="summary-sub summary-gate-comp">Belka (12): +0.0 pkt</div>
                 </div>
               </div>
 
@@ -179,6 +191,7 @@
         <span class="guide-item"><kbd>SPACJA</kbd> / <kbd>L-KLIK</kbd> = Belka / Wybicie / Telemark</span>
         <span class="guide-item"><kbd>P-KLIK</kbd> / <kbd>L</kbd> = Lądowanie na dwie nogi</span>
         <span class="guide-item"><kbd>▲</kbd><kbd>▼</kbd> / <kbd>Myszka</kbd> = Balans w locie (kąt natarcia)</span>
+        <span class="guide-item"><kbd>[</kbd> / <kbd>]</kbd> = Zmiana belki startowej FIS</span>
       </div>
       <div class="footer-meta">
         <span>SkiJump2 &bull; DSJ2 Retro Tribute &bull; Małyszomania Forever</span>
@@ -269,6 +282,7 @@
                   <th>SKOCZEK</th>
                   <th style="width: 60px;">KRAJ</th>
                   <th style="width: 90px;">ODLEGŁOŚĆ</th>
+                  <th style="width: 70px;">BELKA</th>
                   <th style="width: 90px;">NOTA SKOKU</th>
                   <th style="width: 80px;">PUNKTY PŚ</th>
                 </tr>

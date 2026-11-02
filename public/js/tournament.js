@@ -1,7 +1,7 @@
 /**
  * Tournament Engine for SkiJump2
  * Supports World Cup series, AI competitor simulations, 5-judge scoring,
- * and leaderboard synchronization using relative subpath-safe API endpoints.
+ * starting gate FIS compensation, and leaderboard synchronization using relative subpath-safe API endpoints.
  */
 
 (function () {
@@ -22,31 +22,35 @@
           country: 'POL',
           kPoint: 120,
           hsPoint: 134,
-          record: { distance: 140.5, holder: 'Adam Małysz (POL)' }
+          record: { distance: 140.5, holder: 'Adam Małysz (POL)' },
+          gates: { default: 12, min: 1, max: 20, pointsPerGate: 4.8 }
         },
         {
           id: 'wisla',
           name: 'Wisła - Malinka',
           country: 'POL',
-          kPoint: 120,
-          hsPoint: 134,
-          record: { distance: 139.0, holder: 'Stefan Kraft (AUT)' }
+          kPoint: 105,
+          hsPoint: 120,
+          record: { distance: 139.0, holder: 'Stefan Kraft (AUT)' },
+          gates: { default: 10, min: 1, max: 20, pointsPerGate: 4.2 }
         },
         {
           id: 'planica',
           name: 'Planica - Letalnica bratov Gorišek',
           country: 'SLO',
-          kPoint: 200,
-          hsPoint: 240,
-          record: { distance: 252.0, holder: 'Ryoyu Kobayashi (JPN)' }
+          kPoint: 185,
+          hsPoint: 215,
+          record: { distance: 252.0, holder: 'Ryoyu Kobayashi (JPN)' },
+          gates: { default: 8, min: 1, max: 20, pointsPerGate: 6.4 }
         },
         {
           id: 'oberstdorf',
           name: 'Oberstdorf - Schattenbergschanze',
           country: 'GER',
           kPoint: 115,
-          hsPoint: 137,
-          record: { distance: 143.5, holder: 'Sigurd Pettersen (NOR)' }
+          hsPoint: 130,
+          record: { distance: 143.5, holder: 'Sigurd Pettersen (NOR)' },
+          gates: { default: 12, min: 1, max: 20, pointsPerGate: 4.5 }
         }
       ];
 
@@ -91,6 +95,20 @@
       }
       this.isInitialized = true;
       return { hills: this.hills, competitors: this.aiCompetitors };
+    }
+
+    /**
+     * Calculate FIS gate compensation points
+     * When currentGate < baseGate (lowered), delta is positive -> points added (+)
+     * When currentGate > baseGate (raised), delta is negative -> points deducted (-)
+     * Contract: calculateGateCompensation(currentGate, baseGate, pointsPerGate) -> number
+     */
+    calculateGateCompensation(currentGate, baseGate = 12, pointsPerGate = 4.8) {
+      const cGate = Number(currentGate) || 12;
+      const bGate = Number(baseGate) || 12;
+      const ppg = Number(pointsPerGate) || 4.8;
+      const delta = bGate - cGate;
+      return Number((delta * ppg).toFixed(1));
     }
 
     /**
@@ -209,21 +227,22 @@
 
     /**
      * Calculate FIS jump points: base 60pts at K-point (or 120 on ski flying K>=170),
-     * +/- points per meter, plus style score and wind compensation.
+     * +/- points per meter, style score, wind compensation, and starting gate compensation.
      */
-    calculateJumpPoints(distance, hill, styleScore, windCompensation = 0) {
+    calculateJumpPoints(distance, hill, styleScore, windCompensation = 0, gateCompensation = 0) {
       const isFlying = hill.kPoint >= 170;
       const basePoints = isFlying ? 120 : 60;
       const meterValue = isFlying ? 1.2 : (hill.kPoint >= 100 ? 1.8 : 2.0);
 
       const distanceDiff = distance - hill.kPoint;
       const distancePoints = basePoints + (distanceDiff * meterValue);
-      const total = distancePoints + styleScore + windCompensation;
+      const total = distancePoints + styleScore + windCompensation + gateCompensation;
 
       return {
         distancePoints: Number(distancePoints.toFixed(1)),
         stylePoints: Number(styleScore.toFixed(1)),
         windPoints: Number(windCompensation.toFixed(1)),
+        gateCompensation: Number(gateCompensation.toFixed(1)),
         totalPoints: Number(Math.max(0, total).toFixed(1))
       };
     }
@@ -231,7 +250,7 @@
     /**
      * Simulate an AI competitor's jump on a given hill
      */
-    simulateAiJump(participant, hill, wind = 0) {
+    simulateAiJump(participant, hill, wind = 0, currentGate = null) {
       const skillFactor = (participant.skill || 90) / 100;
       const consistencyFactor = (participant.consistency || 90) / 100;
 
@@ -239,9 +258,14 @@
       const variance = (1 - consistencyFactor) * 20;
       const randomOffset = (Math.random() - 0.5) * variance;
 
+      // Gate distance impact: each gate difference changes distance by ~1.8m
+      const defaultGate = (hill.gates && hill.gates.default) || 12;
+      const gate = currentGate !== null ? currentGate : defaultGate;
+      const gateDistEffect = (gate - defaultGate) * 1.8;
+
       // Base distance targets between K-point and HS-point
       const targetRange = hill.hsPoint - hill.kPoint;
-      const baseDistance = hill.kPoint + (targetRange * 0.7 * skillFactor) + randomOffset;
+      const baseDistance = hill.kPoint + (targetRange * 0.7 * skillFactor) + randomOffset + gateDistEffect;
 
       // Wind effect: positive front wind gives lift, negative tail wind reduces
       const windEffect = wind * 2.5;
@@ -260,7 +284,9 @@
 
       const judges = this.calculateJudgeScores(null, landingQuality);
       const windComp = Number((-wind * 1.5).toFixed(1));
-      const points = this.calculateJumpPoints(finalDistance, hill, judges.styleScore, windComp);
+      const ppg = (hill.gates && hill.gates.pointsPerGate) || 4.8;
+      const gateComp = this.calculateGateCompensation(gate, defaultGate, ppg);
+      const points = this.calculateJumpPoints(finalDistance, hill, judges.styleScore, windComp, gateComp);
 
       return {
         participant,
@@ -268,6 +294,8 @@
         landingQuality,
         judgeScores: judges.allScores,
         styleScore: judges.styleScore,
+        gate: gate,
+        gateCompensation: gateComp,
         windCompensation: windComp,
         totalPoints: points.totalPoints
       };
@@ -297,14 +325,15 @@
         humanStanding.totalTournamentPoints += humanResult.totalPoints;
       }
 
-      // 2. Simulate AI jumps for this round
+      // 2. Simulate AI jumps for this round using jury standard gate
       const roundAiResults = [];
+      const defaultGate = (currentHill.gates && currentHill.gates.default) || 12;
       t.standings.forEach(s => {
         if (s.participant.isHuman) return;
 
         // Generate slight wind variance for AI jumps
         const aiWind = (Math.random() - 0.5) * 2.0;
-        const aiResult = this.simulateAiJump(s.participant, currentHill, aiWind);
+        const aiResult = this.simulateAiJump(s.participant, currentHill, aiWind, defaultGate);
         roundAiResults.push(aiResult);
 
         if (!s.hillScores[currentHill.id]) {
@@ -393,6 +422,8 @@
             hillId: entry.hillId || 'zakopane',
             distance: entry.distance,
             styleScore: entry.styleScore,
+            gate: entry.gate !== undefined ? entry.gate : 12,
+            gateCompensation: entry.gateCompensation !== undefined ? entry.gateCompensation : 0.0,
             totalPoints: entry.totalPoints
           })
         });
@@ -414,6 +445,8 @@
           hillId: entry.hillId,
           distance: entry.distance,
           styleScore: entry.styleScore,
+          gate: entry.gate !== undefined ? entry.gate : 12,
+          gateCompensation: entry.gateCompensation !== undefined ? entry.gateCompensation : 0.0,
           totalPoints: entry.totalPoints,
           timestamp: Date.now()
         });

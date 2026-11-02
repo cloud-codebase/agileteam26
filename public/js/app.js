@@ -1,8 +1,9 @@
 /**
- * app.js - Main Application Coordinator for SkiJump2 (Sprint 1.0)
+ * app.js - Main Application Coordinator for SkiJump2 (Sprint 2.0)
  * Integrates SkiHills, SkiPhysics, SkiRenderer, TournamentEngine, and SkiAudio.
- * Manages HUD reactive updates, keyboard & mouse controls, jumper customizer,
- * 5-judge scoring cards, and REST API communication via relative paths.
+ * Manages HUD reactive updates, starting gate interactive controls (#gateControl),
+ * sub-pixel takeoff timing feedback, 5-judge scoring cards with FIS gate compensation (#gateCompDisplay),
+ * and REST API communication via relative paths ('api/...').
  */
 
 (function () {
@@ -12,6 +13,9 @@
   const state = {
     currentHillId: 'zakopane',
     gameMode: 'TRAINING', // 'TRAINING' | 'WORLD_CUP'
+    currentGate: 12,
+    baseGate: 12,
+    pointsPerGate: 4.8,
     jumper: {
       name: 'Adam Małysz',
       country: 'POL',
@@ -40,6 +44,7 @@
       hillNameDisplay: document.getElementById('hillNameDisplay'),
       hillHsDisplay: document.getElementById('hillHsDisplay'),
       hillRecordDisplay: document.getElementById('hillRecordDisplay'),
+      takeoffFeedback: document.getElementById('takeoffFeedback'),
       windVane: document.getElementById('windVane'),
       windArrow: document.getElementById('windArrow'),
       windSpeed: document.getElementById('windSpeed'),
@@ -49,6 +54,13 @@
       jumpPhase: document.getElementById('jumpPhase'),
       actionPrompter: document.getElementById('actionPrompter'),
 
+      // Gate Control Widget (DESIGN.md SCRUM-194)
+      gateControl: document.getElementById('gateControl'),
+      gateNumber: document.getElementById('gateNumber'),
+      gateDownBtn: document.getElementById('gateDownBtn'),
+      gateUpBtn: document.getElementById('gateUpBtn'),
+      gateCompPreview: document.getElementById('gateCompPreview'),
+
       // Judge Scores Modal
       judgeScoresPanel: document.getElementById('judgeScoresPanel'),
       closeScoresBtn: document.getElementById('closeScoresBtn'),
@@ -57,6 +69,7 @@
       summaryLandingType: document.getElementById('summaryLandingType'),
       summaryStylePoints: document.getElementById('summaryStylePoints'),
       summaryWindComp: document.getElementById('summaryWindComp'),
+      gateCompDisplay: document.getElementById('gateCompDisplay'),
       totalPointsDisplay: document.getElementById('totalPointsDisplay'),
       judgesList: document.getElementById('judgesList'),
       nextJumpBtn: document.getElementById('nextJumpBtn'),
@@ -100,14 +113,74 @@
   }
 
   /**
+   * Updates Gate UI Display and preview compensation
+   */
+  function updateGateUI() {
+    if (dom.gateNumber) {
+      dom.gateNumber.textContent = `Belka: ${state.currentGate}`;
+    }
+
+    if (dom.gateCompPreview) {
+      const delta = state.baseGate - state.currentGate;
+      const comp = Number((delta * state.pointsPerGate).toFixed(1));
+      const sign = comp >= 0 ? '+' : '';
+      dom.gateCompPreview.textContent = `Komp: ${sign}${comp.toFixed(1)} pkt`;
+      if (comp < 0) {
+        dom.gateCompPreview.classList.add('negative');
+      } else {
+        dom.gateCompPreview.classList.remove('negative');
+      }
+    }
+
+    // Disable buttons if at limits
+    const hill = window.SkiHills ? window.SkiHills.getHill(state.currentHillId) : null;
+    const minG = (hill && hill.gates && hill.gates.min) || 1;
+    const maxG = (hill && hill.gates && hill.gates.max) || 20;
+
+    if (dom.gateDownBtn) dom.gateDownBtn.disabled = state.currentGate <= minG;
+    if (dom.gateUpBtn) dom.gateUpBtn.disabled = state.currentGate >= maxG;
+  }
+
+  /**
+   * Set starting gate height
+   */
+  function changeGate(delta) {
+    const hill = window.SkiHills ? window.SkiHills.getHill(state.currentHillId) : null;
+    const minG = (hill && hill.gates && hill.gates.min) || 1;
+    const maxG = (hill && hill.gates && hill.gates.max) || 20;
+
+    const newGate = Math.max(minG, Math.min(maxG, state.currentGate + delta));
+    if (newGate !== state.currentGate) {
+      state.currentGate = newGate;
+      if (window.SkiPhysics) {
+        window.SkiPhysics.setGate(state.currentGate);
+      }
+      updateGateUI();
+      if (window.SkiAudio && window.SkiAudio.playGateBeep) {
+        window.SkiAudio.playGateBeep();
+      }
+    }
+  }
+
+  /**
    * Initializes or resets jump sequence on current hill
    */
   function setupNewJump() {
     state.currentWind = generateRandomWind();
     const hill = window.SkiHills ? window.SkiHills.getHill(state.currentHillId) : null;
     
+    if (hill) {
+      state.baseGate = (hill.gates && hill.gates.default) || 12;
+      state.pointsPerGate = (hill.gates && hill.gates.pointsPerGate) || 4.8;
+      // If gate hasn't been manually set or on hill change, default to hill default
+      if (state.currentGate === undefined || state.currentGate === null) {
+        state.currentGate = state.baseGate;
+      }
+    }
+
     if (hill && window.SkiPhysics) {
       window.SkiPhysics.initJump(hill, state.currentWind);
+      window.SkiPhysics.setGate(state.currentGate);
     }
     if (hill && window.SkiRenderer) {
       window.SkiRenderer.setHill(hill);
@@ -116,6 +189,7 @@
         helmetColor: state.jumper.helmetColor,
         hasMustache: state.jumper.hasMustache
       });
+      window.SkiRenderer.clearTakeoffBanner();
     }
 
     if (window.SkiAudio && window.SkiAudio.playGateBeep) {
@@ -123,6 +197,7 @@
     }
 
     updateHillHeader(hill);
+    updateGateUI();
     updateWindHUD(state.currentWind);
     closeJudgeScores();
   }
@@ -142,7 +217,6 @@
   function updateWindHUD(wind) {
     if (dom.windSpeed) dom.windSpeed.textContent = `${wind.speed.toFixed(1)} m/s`;
     if (dom.windArrow) {
-      // Rotate needle according to wind direction
       dom.windArrow.style.transform = `rotate(${wind.angle}deg)`;
     }
     if (dom.windAngle) {
@@ -175,6 +249,13 @@
       }
     }
 
+    // Gate control interactivity state: only clickable on GATE phase
+    if (dom.gateDownBtn && dom.gateUpBtn) {
+      const isGatePhase = phys.phase === 'GATE';
+      dom.gateDownBtn.disabled = !isGatePhase || state.currentGate <= 1;
+      dom.gateUpBtn.disabled = !isGatePhase || state.currentGate >= 20;
+    }
+
     // Phase badge and contextual prompter
     if (dom.jumpPhase) {
       dom.jumpPhase.className = 'hud-status-badge';
@@ -184,8 +265,8 @@
       switch (phys.phase) {
         case 'GATE':
           dom.jumpPhase.classList.add('phase-gate');
-          phaseText = 'BELKA STARTOWA';
-          prompterText = '<span class="prompter-blink">[SPACJA / L-KLIK]</span> NAJAZD';
+          phaseText = `BELKA ${state.currentGate}`;
+          prompterText = '<span class="prompter-blink">[SPACJA / L-KLIK]</span> NAJAZD &bull; <kbd>[</kbd><kbd>]</kbd> BELKA';
           break;
         case 'IN_RUN':
           dom.jumpPhase.classList.add('phase-inrun');
@@ -236,6 +317,10 @@
       landingQuality = 'TWO_FOOT';
     }
 
+    // Gate compensation points
+    const gateDelta = state.baseGate - state.currentGate;
+    const gateComp = Number((gateDelta * state.pointsPerGate).toFixed(1));
+
     // Use TournamentEngine judge calculations if available
     let judgeResult = null;
     let pointResult = null;
@@ -244,7 +329,7 @@
       judgeResult = window.SkiTournament.calculateJudgeScores(null, landingQuality);
       // Wind compensation calculation (approximate: headwind gives minus points, tailwind plus)
       const windComp = Number((state.currentWind.speed * (state.currentWind.angle < 90 || state.currentWind.angle > 270 ? -1.5 : 1.5)).toFixed(1));
-      pointResult = window.SkiTournament.calculateJumpPoints(physState.distance, hill, judgeResult.styleScore, windComp);
+      pointResult = window.SkiTournament.calculateJumpPoints(physState.distance, hill, judgeResult.styleScore, windComp, gateComp);
     } else {
       // Fallback
       judgeResult = {
@@ -257,7 +342,8 @@
         distancePoints: 60 + (physState.distance - hill.kPoint) * 1.8,
         stylePoints: 55.5,
         windPoints: 0,
-        totalPoints: 115.5
+        gateCompensation: gateComp,
+        totalPoints: 115.5 + gateComp
       };
     }
 
@@ -267,6 +353,9 @@
       landingType: physState.landingType || (physState.phase === 'CRASHED' ? 'crash' : 'two-foot'),
       judgeResult: judgeResult,
       pointResult: pointResult,
+      gate: state.currentGate,
+      gateDelta: gateDelta,
+      gateCompensation: gateComp,
       playerName: state.jumper.name,
       country: state.jumper.country
     };
@@ -278,6 +367,8 @@
       window.SkiTournament.processJumpResult({
         distance: summary.distance,
         styleScore: judgeResult.styleScore,
+        gate: state.currentGate,
+        gateCompensation: gateComp,
         totalPoints: pointResult.totalPoints,
         landingQuality: landingQuality,
         judgeScores: judgeResult.allScores
@@ -314,6 +405,12 @@
     if (dom.summaryWindComp) {
       const wSign = summary.pointResult.windPoints >= 0 ? '+' : '';
       dom.summaryWindComp.textContent = `Komp. wiatru: ${wSign}${summary.pointResult.windPoints.toFixed(1)} pkt`;
+    }
+
+    // Gate compensation readout (#gateCompDisplay)
+    if (dom.gateCompDisplay) {
+      const gSign = summary.gateCompensation >= 0 ? '+' : '';
+      dom.gateCompDisplay.textContent = `Belka (${summary.gate}): ${gSign}${summary.gateCompensation.toFixed(1)} pkt`;
     }
 
     // Render 5 Judge cards
@@ -365,7 +462,7 @@
   }
 
   /**
-   * Submit jump result to backend leaderboard via relative API path
+   * Submit jump result to backend leaderboard via relative API path ('api/leaderboard')
    */
   async function submitCurrentScore() {
     if (!state.lastJumpSummary) return;
@@ -383,6 +480,8 @@
         hillId: s.hill.id,
         distance: s.distance,
         styleScore: s.judgeResult.styleScore,
+        gate: s.gate,
+        gateCompensation: s.gateCompensation,
         totalPoints: s.pointResult.totalPoints
       };
 
@@ -432,6 +531,7 @@
         name: s.participant.name,
         country: s.participant.country,
         distance: s.hillScores[state.currentHillId]?.rounds?.round1?.distance || '-',
+        gate: s.hillScores[state.currentHillId]?.rounds?.round1?.gate || state.currentGate,
         score: s.totalTournamentPoints.toFixed(1),
         cupPoints: s.worldCupPoints || 0,
         isHuman: s.participant.isHuman
@@ -459,6 +559,7 @@
         name: s.playerName,
         country: s.country,
         distance: `${s.distance} m`,
+        gate: s.gate !== undefined ? s.gate : '-',
         score: `${s.totalPoints} pkt`,
         cupPoints: '-',
         isHuman: s.playerName === state.jumper.name
@@ -473,7 +574,7 @@
     dom.standingsTableBody.innerHTML = '';
 
     if (!rows || rows.length === 0) {
-      dom.standingsTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 18px;">Brak wpisów w tabeli</td></tr>`;
+      dom.standingsTableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 18px;">Brak wpisów w tabeli</td></tr>`;
       return;
     }
 
@@ -485,6 +586,7 @@
         <td>${r.name} ${r.isHuman ? '⭐' : ''}</td>
         <td>${r.country}</td>
         <td>${r.distance}</td>
+        <td>${r.gate || '-'}</td>
         <td>${r.score}</td>
         <td><b>${r.cupPoints}</b></td>
       `;
@@ -548,8 +650,20 @@
     if (dom.hillSelect) {
       dom.hillSelect.addEventListener('change', (e) => {
         state.currentHillId = e.target.value;
+        const newHill = window.SkiHills ? window.SkiHills.getHill(state.currentHillId) : null;
+        if (newHill && newHill.gates) {
+          state.currentGate = newHill.gates.default;
+        }
         setupNewJump();
       });
+    }
+
+    // Starting Gate Buttons
+    if (dom.gateDownBtn) {
+      dom.gateDownBtn.addEventListener('click', () => changeGate(-1));
+    }
+    if (dom.gateUpBtn) {
+      dom.gateUpBtn.addEventListener('click', () => changeGate(1));
     }
 
     // Mode Selector
@@ -615,6 +729,18 @@
             e.preventDefault();
             setupNewJump();
           }
+        }
+      } else if (e.key === '[' || e.key === '{') {
+        // Lower gate shortcut
+        if (window.SkiPhysics && window.SkiPhysics.getJumpState().phase === 'GATE') {
+          e.preventDefault();
+          changeGate(-1);
+        }
+      } else if (e.key === ']' || e.key === '}') {
+        // Raise gate shortcut
+        if (window.SkiPhysics && window.SkiPhysics.getJumpState().phase === 'GATE') {
+          e.preventDefault();
+          changeGate(1);
         }
       } else if (e.code === 'Escape') {
         closeJudgeScores();
