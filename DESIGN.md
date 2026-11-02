@@ -1,4 +1,4 @@
-# DESIGN.md — Sprint 1.0 Architecture & Technical Blueprint
+# DESIGN.md — Sprint 2.0 Architecture & Technical Blueprint
 
 ## 1. System Architecture & Cloud Run Container
 - **App Type**: Tiered / Single-Container Node.js 20 Express application on Port 8080.
@@ -9,76 +9,65 @@
 
 ## 2. Modular File Tree & Ownership
 ```text
-├── Dockerfile                  # Node:20-alpine container exposing port 8080
-├── package.json                # Express server dependencies
-├── server.js                   # Express server with /api/leaderboard, /api/hills
-├── cloudbuild.yaml             # CI/CD deployment configuration (preserved)
-├── README.md                   # Project overview & instructions (preserved)
+├── Dockerfile                  # Node:20-alpine container exposing port 8080 (Preserved)
+├── package.json                # Express server dependencies (Preserved)
+├── server.js                   # Express server with /api/leaderboard, /api/hills (Preserved)
+├── cloudbuild.yaml             # CI/CD deployment configuration (Preserved)
+├── README.md                   # Project overview & instructions (Preserved)
 └── public/
-    ├── index.html              # Shell, CRT filter, HUD overlays, canvas, modals (SCRUM-172)
+    ├── index.html              # Shell, CRT filter, HUD overlays, canvas, modals (SCRUM-177)
     ├── css/
-    │   └── style.css           # Retro pixel/CRT scanline aesthetic & winter styling (SCRUM-172)
+    │   └── style.css           # Retro pixel/CRT scanline aesthetic & winter styling (SCRUM-177)
     ├── js/
-    │   ├── hills.js            # Hill data (Zakopane K-120, Planica K-185, Wisla K-105) (SCRUM-172)
-    │   ├── physics.js          # Inrun, takeoff kinematics, 2D aerodynamics, wind, landing (SCRUM-173)
-    │   ├── renderer.js         # HTML5 Canvas rendering of profile, skier posture, weather (SCRUM-173)
-    │   ├── audio.js            # Procedural Web Audio API sound effects (wind, whoosh, cheer) (SCRUM-174)
-    │   ├── tournament.js       # Round manager, 5-judge style scoring, distance points, table (SCRUM-174)
-    │   └── game.js             # State orchestrator, input handling (space/click/keys), loop (SCRUM-174)
+    │   ├── hills.js            # Hill data (Zakopane K-120, Planica K-185, Wisla K-105) (Preserved)
+    │   ├── physics.js          # Inrun, takeoff kinematics, 2D aerodynamics, wind, landing (Preserved)
+    │   ├── renderer.js         # HTML5 Canvas rendering of profile, starting bar, jumper (SCRUM-176)
+    │   ├── audio.js            # Web Audio SFX: FIS starting beeps, gate clearance (SCRUM-178)
+    │   ├── tournament.js       # Round manager, 5-judge FIS tournament scoring (Preserved)
+    │   └── game.js             # State orchestrator, gate countdown & readiness states (SCRUM-178)
 ```
 
-## 3. Interfaces, DOM Elements & JS Contracts
+## 3. Sprint 2.0 Feature: High-Contrast Starting Gate & FIS Readiness Prompts
 
-### DOM Elements (`index.html`):
-- Canvas: `<canvas id="game-canvas" width="960" height="540"></canvas>`
-- HUD Overlays:
-  - Wind indicator: `#wind-arrow`, `#wind-speed` (e.g. `+1.8 m/s`)
-  - Speedometer: `#inrun-speed` (e.g. `92.4 km/h`)
-  - Gate / Hill info: `#hill-name`, `#hill-k-point`, `#hill-hs-point`
-  - Jumper status: `#jump-phase` (READY, INRUN, FLIGHT, LANDING, FINISHED)
-  - Distance live counter: `#live-distance`
-- Control Panel / Hill Selector:
-  - Hill Select: `<select id="hill-select">`
-  - Start Jump Button: `#btn-jump-action`, Reset Button: `#btn-reset`
-- Scoreboard & Judge Modal:
-  - `#score-modal`: `#judge-scores` (5 judges, drop high/low), `#distance-score`, `#total-points`
-  - Leaderboard Table: `#leaderboard-table` (rank, jumper, hill, distance, total)
+### User Feedback:
+*"Make the starting bar more visible for the player as it is hard to detect when to start the jump."*
 
-### JS Modules & Global Contracts:
-- `window.HillData`: `{ [hillId: string]: { name, kPoint, hsPoint, inrunAngle, tableAngle, inrunLength, landingCurve, record } }`
-- `window.SkiPhysics`:
-  - `initJump(hillId, windVector)`
-  - `update(dt, inputState)` -> returns `{ x, y, vx, vy, angle, phase, distance, speed, isCrash, isTelemark }`
-  - Phases: `'GATE'`, `'INRUN'`, `'FLIGHT'`, `'LANDING'`, `'STOPPED'`
-- `window.SkiRenderer`:
-  - `init(canvasElement)`
-  - `draw(hill, physicsState, weather)`: renders procedural snow terrain, tower, spectators, jumper sprite posture, trails
-- `window.SkiAudio`:
-  - `playInrunWhoosh(speed)`
-  - `playTakeoff()`
-  - `playLanding(telemark, crash)`
-  - `playCrowdCheer(points)`
-- `window.SkiTournament`:
-  - `calculatePoints(hill, distance, isTelemark, isCrash, wind)` -> `{ distancePoints, judgePoints, windComp, totalPoints, judges: [5] }`
-  - `addScore(entry)`, `getLeaderboard()`
-- `window.SkiGame`:
-  - Main loop `requestAnimationFrame`, inputs: `SPACE`/`LEFT_CLICK` (Takeoff / Landing), `UP`/`DOWN` / Mouse movement (aerodynamic angle of attack / lean)
+### UI & DOM Elements (`public/index.html` & `public/css/style.css` - SCRUM-177):
+- **FIS Starting Signal Lights Box**: `#gate-signal-lights` inside `.viewport-wrapper`
+  - Child lights: `#light-red` (WAIT), `#light-yellow` (ATTENTION), `#light-green` (GO!)
+  - Class states: `.light.active` with glowing retro box-shadow (`#ef4444`, `#eab308`, `#22c55e`).
+- **Pulsing Gate Readiness Badge**: `#gate-prompt-banner` overlay across upper canvas
+  - Text: `"WAITING FOR WIND CLEARANCE..."` -> `"ATTENTION: JUMPER ON BAR"` -> `"GREEN LIGHT - PRESS SPACE OR CLICK TO START"`
+  - CSS animations: `@keyframes pulse-green`, `@keyframes neon-glow` for high visibility.
+- **Starting Bar Height Indicator**: `#gate-bar-level` inside top HUD (e.g., `BAR #12 (ELEVATED)`).
 
-## 4. API Routes (`server.js`):
-- `GET api/hills` -> `[{ id, name, kPoint, hsPoint, record }]`
-- `GET api/leaderboard` -> `[{ id, playerName, hillId, distance, totalPoints, date }]`
-- `POST api/leaderboard` -> saves entry in-memory / JSON, returns updated top 10
+### Canvas Starting Bar Rendering (`public/js/renderer.js` - SCRUM-176):
+- **`SkiRenderer._drawInrunStructure(ctx, hill)` extension**:
+  - Render heavy steel/wooden starting tower scaffolding with high-contrast safety stripes (yellow & black diagonal hazard stripes).
+  - High-contrast starting bar beam: metallic bar positioned directly behind skier boots at `getInrunPos(hill, 0)` with neon safety pads.
+  - Active gate clearance animation: When phase transitions from `GATE` to `INRUN`, render the starting bar pivoting upward/clearing with dynamic snow dust puff.
+  - Dynamic camera focus: In `GATE` phase, zoom camera (`targetScale: 4.2`) focusing on tower gate and jumper, pulling smoothly out to `3.4` upon inrun start.
 
-## 5. Subpath Safety & Robustness Checklist
+### Audio & Game State Synchronization (`public/js/audio.js` & `public/js/game.js` - SCRUM-178):
+- **`SkiAudio` Interface Extensions**:
+  - `playGateBeep(type)`: Authentic FIS electronic starting beeps (Short 440Hz beep on Red/Yellow; High 880Hz confirmation beep on Green).
+  - `playGateRelease()`: Mechanical click / latch release sound when jumper pushes off bar.
+- **`SkiGame` State Machine Extensions**:
+  - Gate Sequence: When `resetJump()` is called, initiate gate readiness countdown:
+    - Phase `GATE_WAIT` (Red light, 0.6s) -> `GATE_READY` (Yellow light, 0.6s) -> `GATE_CLEAR` (Green light, prompt active).
+    - Player can only start inrun when green light is active or immediate manual start with visual feedback.
+  - Synchronize DOM lights (`#light-red`, `#light-yellow`, `#light-green`), `#gate-prompt-banner`, and audio beeps.
+
+## 4. Subpath Safety & Robustness Checklist
 - [x] Relative paths only: `index.html` uses `css/style.css` and `js/...`
 - [x] Fetch calls use `api/leaderboard` (no leading slash)
 - [x] Canvas and graphics: 100% canvas & procedural styling (no external asset URLs)
 - [x] Audio: 100% Web Audio API procedural synthesis (oscillator/noise buffers)
 - [x] Defensive DOM lookups with `DOMContentLoaded` and null guards
 
-## 6. Task-to-File Mapping & Parallel Waves
+## 5. Task-to-File Mapping & Parallel Waves (Sprint 2.0)
 | Task ID | Developer Focus | Target Files | Wave |
 |---|---|---|---|
-| `SCRUM-172` | UI Shell, Hill Selector, CRT & HUD Styling | `public/index.html`, `public/css/style.css`, `public/js/hills.js`, `package.json`, `server.js`, `Dockerfile` | Wave 1 |
-| `SCRUM-173` | Physics Engine & 2D Canvas Renderer | `public/js/physics.js`, `public/js/renderer.js` | Wave 1 |
-| `SCRUM-174` | Audio, Scoring Engine & Game Orchestrator | `public/js/audio.js`, `public/js/tournament.js`, `public/js/game.js` | Wave 2 |
+| `SCRUM-176` | High-Contrast Starting Gate Visuals & Clearance Animation | `public/js/renderer.js` (Modify/Extend) | Wave 1 (Parallel) |
+| `SCRUM-177` | Starting Gate HUD Signal Lights & Jump Timing Prompts | `public/index.html`, `public/css/style.css` (Modify/Extend) | Wave 1 (Parallel) |
+| `SCRUM-178` | Starting Gate Audio Cues & State Machine Synchronization | `public/js/audio.js`, `public/js/game.js` (Modify/Extend) | Wave 2 |
