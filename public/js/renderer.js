@@ -1,6 +1,12 @@
 /**
  * renderer.js - 2D Canvas Procedural Ski Jump Renderer
- * Sprint 1.0 (SCRUM-173)
+ * Sprint 1.0 (SCRUM-173) & Sprint 2.0 (SCRUM-176)
+ *
+ * Sprint 2.0 Enhancements (SCRUM-176):
+ * - High-contrast starting tower structure with metallic scaffolding and yellow/black diagonal hazard safety pads.
+ * - High-contrast starting bar beam directly across inrun gate slot behind skier with neon safety pads.
+ * - Dynamic camera focus: targetScale ~4.2 in GATE phase focusing closely on tower gate, smoothly transitioning to ~3.4 on inrun descent.
+ * - Active gate clearance animation: bar pivoting upward/clearing with dynamic snow dust puff when jumper pushes off.
  */
 
 (function (window) {
@@ -18,8 +24,8 @@
       y: 0,
       targetX: 0,
       targetY: 0,
-      scale: 3.2,
-      targetScale: 3.2
+      scale: 3.4,
+      targetScale: 4.2
     },
 
     // Procedural background and weather state
@@ -27,6 +33,15 @@
     mountainPeaks: [],
     pineTrees: [],
     cheeringCrowd: [],
+
+    // Sprint 2.0 Gate Clearance Animation state
+    gateAnimation: {
+      prevPhase: 'GATE',
+      isClearing: false,
+      liftProgress: 0, // 0 (bar lowered / resting) -> 1 (fully cleared / pivoted up)
+      clearTimer: 0,
+      snowPuffs: [] // dynamic particles when jumper pushes off
+    },
 
     /**
      * Initializes the canvas and pregenerates background scenery
@@ -103,19 +118,27 @@
 
     /**
      * Updates camera smoothly tracking the jumper
+     * Sprint 2.0: Dynamic gate zoom: targetScale ~4.2 when mounted on gate, transitioning to ~3.4 on inrun descent
      */
     updateCamera(physicsState) {
       if (!physicsState) return;
 
       const px = physicsState.x || 0;
       const py = physicsState.y || 0;
+      const phase = physicsState.phase || 'GATE';
 
       // Desired camera target in world coordinates
-      if (physicsState.phase === 'GATE' || physicsState.phase === 'INRUN') {
+      if (phase === 'GATE') {
+        // Close-up on the starting gate and jumper sitting on bar
+        this.camera.targetX = px + 8;
+        this.camera.targetY = py - 3;
+        this.camera.targetScale = 4.2;
+      } else if (phase === 'INRUN') {
+        // Zoom pulls back smoothly for inrun descent overview
         this.camera.targetX = px + 12;
         this.camera.targetY = py - 4;
-        this.camera.targetScale = 3.6;
-      } else if (physicsState.phase === 'FLIGHT') {
+        this.camera.targetScale = 3.4;
+      } else if (phase === 'FLIGHT') {
         // Broad dynamic view giving wide angle of flight curve
         this.camera.targetX = px + 18;
         this.camera.targetY = py + 2;
@@ -146,6 +169,76 @@
     },
 
     /**
+     * Updates gate clearance animation and snow dust particles
+     */
+    _updateGateAnimation(physicsState, dt) {
+      const currentPhase = (physicsState && physicsState.phase) ? physicsState.phase : 'GATE';
+      const anim = this.gateAnimation;
+
+      // Detect transition from GATE -> INRUN (push-off)
+      if (anim.prevPhase === 'GATE' && currentPhase === 'INRUN') {
+        anim.isClearing = true;
+        anim.clearTimer = 0;
+        anim.liftProgress = 0;
+
+        // Spawn dynamic snow puff particles at the gate
+        const hill = physicsState ? physicsState.hill : null;
+        const physics = window.SkiPhysics;
+        if (physics && physics.getInrunPos) {
+          const gatePos = physics.getInrunPos(hill, 0);
+          const screenGate = this.worldToScreen(gatePos.x, gatePos.y);
+
+          anim.snowPuffs = [];
+          for (let i = 0; i < 28; i++) {
+            const angle = Math.PI * 0.9 + Math.random() * Math.PI * 0.6; // puff backwards & upwards
+            const speed = 1.2 + Math.random() * 2.8;
+            anim.snowPuffs.push({
+              x: screenGate.x - 6 + (Math.random() * 12 - 6),
+              y: screenGate.y + 2 + (Math.random() * 4 - 2),
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed - 0.5,
+              radius: 1.5 + Math.random() * 2.8,
+              opacity: 0.85 + Math.random() * 0.15,
+              life: 0,
+              maxLife: 0.6 + Math.random() * 0.5
+            });
+          }
+        }
+      } else if (currentPhase === 'GATE') {
+        // Reset when back at gate
+        anim.isClearing = false;
+        anim.liftProgress = 0;
+        anim.clearTimer = 0;
+        anim.snowPuffs = [];
+      }
+
+      anim.prevPhase = currentPhase;
+
+      // Progress lift animation if clearing
+      if (anim.isClearing) {
+        anim.clearTimer += (dt || 0.016);
+        // Animate upward pivot over ~0.45 seconds
+        anim.liftProgress = Math.min(1.0, anim.clearTimer / 0.45);
+      }
+
+      // Update snow puffs
+      if (anim.snowPuffs && anim.snowPuffs.length > 0) {
+        for (let i = anim.snowPuffs.length - 1; i >= 0; i--) {
+          const p = anim.snowPuffs[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.05; // gentle gravity
+          p.radius += 0.04; // expand
+          p.life += (dt || 0.016);
+          p.opacity = Math.max(0, 1 - (p.life / p.maxLife));
+          if (p.life >= p.maxLife) {
+            anim.snowPuffs.splice(i, 1);
+          }
+        }
+      }
+    },
+
+    /**
      * Main Draw Frame
      * @param {Object} hill - Hill data object
      * @param {Object} physicsState - Physics snapshot
@@ -159,6 +252,7 @@
 
       const ctx = this.ctx;
       this.updateCamera(physicsState);
+      this._updateGateAnimation(physicsState, 0.016);
 
       // Clear & Draw Sky Gradient (Alpine winter twilight / stadium night glow)
       this._drawSky(ctx);
@@ -169,8 +263,8 @@
       // Save transform for world rendering
       ctx.save();
 
-      // Draw Inrun Tower structure & Inrun slope track
-      this._drawInrunStructure(ctx, hill);
+      // Draw Inrun Tower structure & Inrun slope track (with enhanced metallic scaffolding, starting bar & hazard pads)
+      this._drawInrunStructure(ctx, hill, physicsState);
 
       // Draw Landing Hill Profile & Snow terrain
       this._drawLandingHill(ctx, hill);
@@ -188,6 +282,9 @@
       if (physicsState) {
         this._drawSkier(ctx, physicsState);
       }
+
+      // Draw Gate Clearance Snow Puffs
+      this._drawGateSnowPuffs(ctx);
 
       ctx.restore();
 
@@ -245,7 +342,12 @@
       ctx.restore();
     },
 
-    _drawInrunStructure(ctx, hill) {
+    /**
+     * Enhanced Inrun Structure Rendering (SCRUM-176)
+     * Renders heavy metallic scaffolding, yellow/black hazard diagonal stripes, starting tower,
+     * high-contrast starting bar beam directly across inrun gate slot behind skier, and lift animation.
+     */
+    _drawInrunStructure(ctx, hill, physicsState) {
       ctx.save();
       const physics = window.SkiPhysics;
       const getInrunPos = physics ? physics.getInrunPos : null;
@@ -254,10 +356,6 @@
         ctx.restore();
         return;
       }
-
-      // Draw wooden / steel lattice scaffolding under inrun
-      ctx.strokeStyle = '#475569';
-      ctx.lineWidth = 2.5;
 
       const samples = 18;
       const points = [];
@@ -268,25 +366,52 @@
         points.push(screenPos);
       }
 
-      // Scaffolding pillars downwards
+      const gateScreen = points[0];
+
+      // 1. Draw Starting Tower Structure & Platform behind gate
+      this._drawStartingTower(ctx, gateScreen);
+
+      // 2. Heavy steel metallic lattice scaffolding under inrun track
+      ctx.strokeStyle = '#64748b'; // metallic steel gray
+      ctx.lineWidth = 2.8;
+
+      // Scaffolding pillars downwards with dual metallic depth
       for (let i = 0; i < points.length; i += 3) {
+        // Main pillar
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 3.0;
         ctx.beginPath();
         ctx.moveTo(points[i].x, points[i].y);
-        ctx.lineTo(points[i].x, points[i].y + 160);
+        ctx.lineTo(points[i].x, points[i].y + 175);
         ctx.stroke();
 
-        // Cross bracing
+        // Highlight sheen
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.moveTo(points[i].x + 1, points[i].y);
+        ctx.lineTo(points[i].x + 1, points[i].y + 175);
+        ctx.stroke();
+
+        // Cross bracing trusses
         if (i + 3 < points.length) {
+          ctx.strokeStyle = '#334155';
+          ctx.lineWidth = 2.2;
           ctx.beginPath();
-          ctx.moveTo(points[i].x, points[i].y + 40);
-          ctx.lineTo(points[i + 3].x, points[i + 3].y + 110);
+          ctx.moveTo(points[i].x, points[i].y + 35);
+          ctx.lineTo(points[i + 3].x, points[i + 3].y + 115);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(points[i].x, points[i].y + 115);
+          ctx.lineTo(points[i + 3].x, points[i + 3].y + 35);
           ctx.stroke();
         }
       }
 
-      // Inrun track surface (snow & ceramic track groove)
-      ctx.lineWidth = 4.5;
-      ctx.strokeStyle = '#e2e8f0';
+      // 3. Inrun track surface (snow bed & ceramic track groove)
+      ctx.lineWidth = 5.0;
+      ctx.strokeStyle = '#e2e8f0'; // bright white ceramic/snow track
       ctx.beginPath();
       ctx.moveTo(points[0].x, points[0].y);
       for (let i = 1; i < points.length; i++) {
@@ -294,29 +419,203 @@
       }
       ctx.stroke();
 
-      // Guard rails
-      ctx.lineWidth = 1.5;
+      // Guard rails with safety cyan glow
+      ctx.lineWidth = 1.8;
       ctx.strokeStyle = '#38bdf8';
       ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y - 3.5);
+      ctx.moveTo(points[0].x, points[0].y - 4.0);
       for (let i = 1; i < points.length; i++) {
-        ctx.lineTo(points[i].x, points[i].y - 3.5);
+        ctx.lineTo(points[i].x, points[i].y - 4.0);
       }
       ctx.stroke();
 
-      // Starting Gate platform
-      const gateScreen = points[0];
-      ctx.fillStyle = '#ef4444';
-      ctx.fillRect(gateScreen.x - 14, gateScreen.y - 12, 14, 12);
-      ctx.fillStyle = '#f8fafc';
-      ctx.font = 'bold 9px monospace';
-      ctx.fillText('GATE', gateScreen.x - 13, gateScreen.y - 3);
-
-      // Takeoff Table Lip (x = 0, y = 0)
+      // 4. Takeoff Table Lip (x = 0, y = 0)
       const lipScreen = points[points.length - 1];
       ctx.fillStyle = '#dc2626';
-      ctx.fillRect(lipScreen.x - 2, lipScreen.y - 2, 4, 10);
+      ctx.fillRect(lipScreen.x - 2, lipScreen.y - 2, 4, 12);
 
+      // 5. Draw High-Contrast Starting Gate Slot, Hazard Pads & Bar Beam
+      this._drawStartingGate(ctx, gateScreen, physicsState);
+
+      ctx.restore();
+    },
+
+    /**
+     * Draws starting tower housing & staircase behind gate position
+     */
+    _drawStartingTower(ctx, gateScreen) {
+      ctx.save();
+      const towerX = gateScreen.x - 42;
+      const towerY = gateScreen.y - 48;
+      const towerW = 42;
+      const towerH = 120;
+
+      // Tower superstructure background
+      ctx.fillStyle = '#1e293b'; // dark metallic slate
+      ctx.fillRect(towerX, towerY, towerW, towerH);
+
+      // Tower roof overhang (FIS official cabin)
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(towerX - 4, towerY - 6, towerW + 8, 8);
+
+      // FIS / TOWER badge
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(towerX + 2, towerY + 3, towerW - 4, 7);
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 6px monospace';
+      ctx.fillText('FIS TOWER', towerX + 5, towerY + 8);
+
+      // Tower structural beams & windows
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(towerX, towerY, towerW, towerH);
+
+      // Glass windows (warm coach room light)
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.45)';
+      ctx.fillRect(towerX + 6, towerY + 14, 12, 10);
+      ctx.fillRect(towerX + 22, towerY + 14, 12, 10);
+
+      // Staircase railing alongside tower
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(towerX, gateScreen.y + 12);
+      ctx.lineTo(gateScreen.x, gateScreen.y + 4);
+      ctx.stroke();
+
+      ctx.restore();
+    },
+
+    /**
+     * Draws starting gate platform, yellow/black hazard diagonal safety pads,
+     * and high-contrast starting bar beam with active clearance lift animation.
+     */
+    _drawStartingGate(ctx, gateScreen, physicsState) {
+      ctx.save();
+
+      // Platform base
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(gateScreen.x - 22, gateScreen.y - 12, 22, 16);
+
+      // Yellow & Black Diagonal Hazard Safety Pads behind/around the gate slot
+      this._drawHazardPad(ctx, gateScreen.x - 22, gateScreen.y - 12, 22, 5);
+      this._drawHazardPad(ctx, gateScreen.x - 22, gateScreen.y + 2, 22, 4);
+
+      // Side Gate Uprights (Gate Stanchions / slotted beam track)
+      // Left/Rear Stanchion
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(gateScreen.x - 14, gateScreen.y - 24, 4, 26);
+      ctx.fillStyle = '#e2e8f0'; // metallic slot guide
+      ctx.fillRect(gateScreen.x - 13, gateScreen.y - 22, 2, 22);
+
+      // Right/Front Stanchion
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(gateScreen.x - 4, gateScreen.y - 24, 4, 26);
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(gateScreen.x - 3, gateScreen.y - 22, 2, 22);
+
+      // Top crossbeam linking stanchions
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(gateScreen.x - 16, gateScreen.y - 26, 18, 4);
+
+      // Gate number plate (#12)
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(gateScreen.x - 14, gateScreen.y - 32, 14, 6);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 5px monospace';
+      ctx.fillText('GATE 12', gateScreen.x - 13, gateScreen.y - 27);
+
+      // Evaluate Gate Clearance Lift Animation
+      // When jumper pushes off, the bar pivots up or clears upwards
+      const anim = this.gateAnimation;
+      const liftProgress = anim.liftProgress || 0; // 0 to 1
+
+      // Resting bar position sits right behind skier's boots/bench (~gateScreen.y - 6)
+      // When lifted, bar moves up by ~16px and angles upward
+      const barBaseY = gateScreen.y - 6 - (liftProgress * 18);
+      const barRotation = -liftProgress * 0.45; // slight upward tilt in radians
+
+      ctx.save();
+      ctx.translate(gateScreen.x - 14, barBaseY);
+      ctx.rotate(barRotation);
+
+      // High-Contrast Starting Bar Beam
+      // Outer bright neon safety pad / metallic casing
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(-2, -3, 18, 6);
+
+      // High-contrast yellow/black hazard pattern directly on the bar beam
+      this._drawHazardPad(ctx, -1, -2, 16, 4);
+
+      // Neon yellow/green safety edge glow highlight
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(-2, -3, 18, 6);
+
+      // Chrome pivot pin / release latch on stanchion
+      ctx.fillStyle = liftProgress > 0.1 ? '#22c55e' : '#ef4444'; // Green when cleared, Red when locked
+      ctx.beginPath();
+      ctx.arc(0, 0, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // "BAR" text on beam
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 5px monospace';
+      ctx.fillText('BAR', 3, 1.5);
+
+      ctx.restore();
+
+      ctx.restore();
+    },
+
+    /**
+     * Helper to render yellow & black diagonal hazard stripes on safety pads
+     */
+    _drawHazardPad(ctx, x, y, width, height) {
+      ctx.save();
+      // Base safety yellow
+      ctx.fillStyle = '#eab308';
+      ctx.fillRect(x, y, width, height);
+
+      // Clip to hazard pad area
+      ctx.beginPath();
+      ctx.rect(x, y, width, height);
+      ctx.clip();
+
+      // Diagonal black stripes
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2.5;
+
+      const step = 4.5;
+      for (let sx = x - height; sx < x + width + height; sx += step) {
+        ctx.beginPath();
+        ctx.moveTo(sx, y + height);
+        ctx.lineTo(sx + height, y);
+        ctx.stroke();
+      }
+
+      // Outer outline
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 0.8;
+      ctx.strokeRect(x, y, width, height);
+
+      ctx.restore();
+    },
+
+    /**
+     * Draws gate clearance snow dust puffs when jumper pushes off
+     */
+    _drawGateSnowPuffs(ctx) {
+      const anim = this.gateAnimation;
+      if (!anim.snowPuffs || anim.snowPuffs.length === 0) return;
+
+      ctx.save();
+      for (const p of anim.snowPuffs) {
+        ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     },
 
