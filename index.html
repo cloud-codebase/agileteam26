@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tic-Tac-Toe Party! 🎮</title>
+  <title>Animal Tic-Tac-Toe! 🐾</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,21 +11,27 @@
 
   <main class="game-container">
     <header class="game-header">
-      <h1 id="game-title">Tic-Tac-Toe Party! 🌟</h1>
-      <div id="status-banner" role="status" aria-live="polite">Player X's Turn!</div>
+      <h1 id="game-title">Animal Tic-Tac-Toe! 🐾</h1>
+      
+      <section id="mode-controls" class="mode-controls" role="radiogroup" aria-label="Game Mode Selection">
+        <button id="btn-mode-ai" class="mode-btn active" type="button" role="radio" aria-checked="true">Play vs Computer 🤖</button>
+        <button id="btn-mode-pvp" class="mode-btn" type="button" role="radio" aria-checked="false">2 Players 👥</button>
+      </section>
+
+      <div id="status-banner" role="status" aria-live="polite">Puppy's Turn 🐶</div>
     </header>
 
     <section class="scoreboard" aria-label="Game Scores">
-      <div class="score-card score-card-x">
-        <span class="player-label">Player X</span>
+      <div id="score-p1" class="score-card score-card-x">
+        <span id="label-p1" class="player-label">Puppy 🐶</span>
         <span id="score-x" class="score-value">0</span>
       </div>
-      <div class="score-card score-card-ties">
-        <span class="player-label">Ties</span>
+      <div id="score-ties-card" class="score-card score-card-ties">
+        <span class="player-label">Ties 🎈</span>
         <span id="score-ties" class="score-value">0</span>
       </div>
-      <div class="score-card score-card-o">
-        <span class="player-label">Player O</span>
+      <div id="score-p2" class="score-card score-card-o">
+        <span id="label-p2" class="player-label">Computer 🤖</span>
         <span id="score-o" class="score-value">0</span>
       </div>
     </section>
