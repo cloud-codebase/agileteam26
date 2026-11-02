@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic-Tac-Toe Party! 🎮</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <canvas id="confetti-canvas" aria-hidden="true"></canvas>
+
+  <main class="game-container">
+    <header class="game-header">
+      <h1 id="game-title">Tic-Tac-Toe Party! 🌟</h1>
+      <div id="status-banner" role="status" aria-live="polite">Player X's Turn!</div>
+    </header>
+
+    <section class="scoreboard" aria-label="Game Scores">
+      <div class="score-card score-card-x">
+        <span class="player-label">Player X</span>
+        <span id="score-x" class="score-value">0</span>
+      </div>
+      <div class="score-card score-card-ties">
+        <span class="player-label">Ties</span>
+        <span id="score-ties" class="score-value">0</span>
+      </div>
+      <div class="score-card score-card-o">
+        <span class="player-label">Player O</span>
+        <span id="score-o" class="score-value">0</span>
+      </div>
+    </section>
+
+    <section class="board-wrapper" aria-label="Tic-Tac-Toe Board">
+      <div id="game-board" role="grid" aria-label="3 by 3 game board">
+        <button class="cell" data-index="0" role="gridcell" aria-label="Cell 1, top left"></button>
+        <button class="cell" data-index="1" role="gridcell" aria-label="Cell 2, top middle"></button>
+        <button class="cell" data-index="2" role="gridcell" aria-label="Cell 3, top right"></button>
+        <button class="cell" data-index="3" role="gridcell" aria-label="Cell 4, middle left"></button>
+        <button class="cell" data-index="4" role="gridcell" aria-label="Cell 5, center"></button>
+        <button class="cell" data-index="5" role="gridcell" aria-label="Cell 6, middle right"></button>
+        <button class="cell" data-index="6" role="gridcell" aria-label="Cell 7, bottom left"></button>
+        <button class="cell" data-index="7" role="gridcell" aria-label="Cell 8, bottom middle"></button>
+        <button class="cell" data-index="8" role="gridcell" aria-label="Cell 9, bottom right"></button>
+      </div>
+    </section>
+
+    <section class="game-controls" aria-label="Game Actions">
+      <button id="btn-reset" class="btn btn-primary" type="button">Play Again 🔄</button>
+      <button id="btn-reset-scores" class="btn btn-secondary" type="button">Clear Scores 🧹</button>
+    </section>
+  </main>
+
+  <script src="game.js" defer></script>
+</body>
+</html>
