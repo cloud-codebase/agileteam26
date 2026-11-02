@@ -1,21 +1,20 @@
 /**
  * game.js - Master Game Orchestrator & State Loop
- * Sprint 1.0 (SCRUM-174) & Sprint 2.0 (SCRUM-178)
+ * Sprint 1.0 (SCRUM-174), Sprint 2.0 (SCRUM-178), Sprint 3.0 (SCRUM-182)
  *
  * Integrates:
- * - window.SkiPhysics (kinematics, aerodynamics, collision)
- * - window.SkiRenderer (procedural canvas rendering, CRT, stadium, gate lift)
- * - window.SkiAudio (Web Audio SFX: gate beeps, release clack, inrun, flight wind, takeoff, landing, cheering, fanfare)
+ * - window.SkiPhysics (kinematics, aerodynamics, collision, lift overhaul)
+ * - window.SkiRenderer (procedural canvas rendering, CRT, stadium, gate lift, edge visualization)
+ * - window.SkiAudio (Web Audio SFX: gate beeps, release clack, inrun, flight wind, takeoff launch, rating chimes, landing, cheering, fanfare)
  * - window.SkiTournament (FIS competition scoring, 5 judges, AI competitors, leaderboard)
- * - DOM HUD elements (FIS lights #gate-signal-lights, #gate-prompt-banner, #gate-bar-level, speedometer, wind sensor)
- * - Keyboard (Space, Arrow Up/Down, W/S) & Mouse/Touch controls
- *
- * Sprint 2.0 State Machine Orchestration (SCRUM-178):
- * - Sequence on resetJump:
- *   1. GATE_WAIT (Red signal active, 0.6s countdown) - "WAITING FOR WIND CLEARANCE..."
- *   2. GATE_READY (Yellow signal active, 0.6s countdown) - "ATTENTION: JUMPER ON BAR"
- *   3. GATE_CLEAR (Green signal active) - "GREEN LIGHT - PRESS SPACE OR CLICK TO START"
- * - Audio synchronization: FIS gate beeps at each phase transition, mechanical gate release on push-off.
+ * - DOM HUD elements:
+ *   - FIS starting lights (#gate-signal-lights, #gate-prompt-banner, #gate-bar-level)
+ *   - Sprint 3.0 Take-Off Timing HUD:
+ *     - #takeoff-hud-container, #takeoff-timing-bar, #takeoff-needle, #takeoff-dist-label
+ *     - #takeoff-prompt-badge ("⚡ JUMP NOW! [SPACE / CLICK] ⚡")
+ *     - #takeoff-feedback-badge (.rating-perfect, .rating-great, .rating-early, .rating-late, .rating-missed)
+ *   - Speedometer, wind sensor, live distance counter
+ * - Keyboard (Space, Enter, Arrow Up/Down, W/S), Mouse click, and Touch controls
  */
 
 (function (window) {
@@ -44,6 +43,9 @@
     gateTimer: 0,
     gateWaitDuration: 0.6,   // seconds on Red
     gateReadyDuration: 0.6,  // seconds on Yellow
+
+    // Takeoff HUD & Feedback timing timer
+    feedbackHideTimeout: null,
 
     // DOM Element cache
     dom: {},
@@ -87,7 +89,15 @@
         lightYellow: document.getElementById('light-yellow'),
         lightGreen: document.getElementById('light-green'),
         gatePromptBanner: document.getElementById('gate-prompt-banner'),
-        gateBarLevel: document.getElementById('gate-bar-level')
+        gateBarLevel: document.getElementById('gate-bar-level'),
+
+        // Take-Off Timing HUD elements (SCRUM-181 / SCRUM-182)
+        takeoffHudContainer: document.getElementById('takeoff-hud-container'),
+        takeoffTimingBar: document.getElementById('takeoff-timing-bar'),
+        takeoffNeedle: document.getElementById('takeoff-needle'),
+        takeoffDistLabel: document.getElementById('takeoff-dist-label'),
+        takeoffPromptBadge: document.getElementById('takeoff-prompt-badge'),
+        takeoffFeedbackBadge: document.getElementById('takeoff-feedback-badge')
       };
 
       this.canvas = this.dom.canvas;
@@ -151,6 +161,23 @@
       this.hasEvaluatedLanding = false;
       this.latestResult = null;
       this.inputs.lean = 0;
+
+      // Clear pending feedback badge timeouts
+      if (this.feedbackHideTimeout) {
+        clearTimeout(this.feedbackHideTimeout);
+        this.feedbackHideTimeout = null;
+      }
+
+      // Hide takeoff timing and feedback badges
+      if (this.dom.takeoffHudContainer) {
+        this.dom.takeoffHudContainer.classList.add('hidden');
+      }
+      if (this.dom.takeoffPromptBadge) {
+        this.dom.takeoffPromptBadge.classList.add('hidden');
+      }
+      if (this.dom.takeoffFeedbackBadge) {
+        this.dom.takeoffFeedbackBadge.classList.add('hidden');
+      }
 
       // Generate realistic randomized wind for the new jump (-2.5 to +2.5 m/s)
       var windX = Math.round((Math.random() * 5.0 - 2.5) * 10) / 10;
@@ -242,14 +269,12 @@
     _applyGateUIState: function (stateName) {
       var d = this.dom;
 
-      // Helper to set active light class
       function setLights(red, yellow, green) {
         if (d.lightRed) d.lightRed.classList.toggle('active', red);
         if (d.lightYellow) d.lightYellow.classList.toggle('active', yellow);
         if (d.lightGreen) d.lightGreen.classList.toggle('active', green);
       }
 
-      // Helper to update banner
       function setBanner(show, cssClass, icon, text) {
         if (!d.gatePromptBanner) return;
         if (!show) {
@@ -298,7 +323,127 @@
     },
 
     /**
+     * Real-time inrun progress tracking for take-off edge proximity & HUD timing meter (SCRUM-182)
+     */
+    _updateTakeoffHUD: function (state) {
+      if (!state) return;
+      var d = this.dom;
+      var phase = state.phase;
+
+      if (phase === 'INRUN') {
+        var inrunLen = (this.currentHill && this.currentHill.inrunLength) ? this.currentHill.inrunLength : 98.7;
+        var inrunProgress = (typeof state.inrunProgress === 'number') ? state.inrunProgress : 0;
+        var distRemaining = Math.max(0, (1 - inrunProgress) * inrunLen);
+
+        var takeoffCfg = (this.currentHill && this.currentHill.takeoffConfig) ? this.currentHill.takeoffConfig : {
+          warningZoneLen: 12.0,
+          sweetSpotLen: 2.8
+        };
+        var warnZoneLen = takeoffCfg.warningZoneLen || 12.0;
+        var sweetSpotLen = takeoffCfg.sweetSpotLen || 2.8;
+
+        // Show HUD container once inside approach / warning zone or when past 60% of inrun
+        if (distRemaining <= (warnZoneLen + 6.0) || inrunProgress > 0.6) {
+          if (d.takeoffHudContainer) {
+            d.takeoffHudContainer.classList.remove('hidden');
+          }
+
+          // Gauge tracks remaining distance across warning track:
+          // 0% at warnZoneLen -> 100% at lip (distRemaining = 0)
+          var gaugeProgress = Math.max(0, Math.min(1.0, 1.0 - (distRemaining / warnZoneLen)));
+          var needleLeftPercent = (gaugeProgress * 100).toFixed(1);
+
+          if (d.takeoffNeedle) {
+            d.takeoffNeedle.style.left = needleLeftPercent + '%';
+          }
+
+          if (d.takeoffDistLabel) {
+            d.takeoffDistLabel.textContent = distRemaining.toFixed(1) + 'm TO LIP';
+          }
+
+          // Show pulsing jump prompt when inside sweet spot (0.2m - 3.2m before lip)
+          var inSweetSpot = (distRemaining >= 0.2 && distRemaining <= (sweetSpotLen + 0.4));
+          if (d.takeoffPromptBadge) {
+            if (inSweetSpot) {
+              d.takeoffPromptBadge.classList.remove('hidden');
+            } else {
+              d.takeoffPromptBadge.classList.add('hidden');
+            }
+          }
+        }
+      } else {
+        // Outside INRUN phase: hide takeoff meter and prompt
+        if (d.takeoffHudContainer) {
+          d.takeoffHudContainer.classList.add('hidden');
+        }
+        if (d.takeoffPromptBadge) {
+          d.takeoffPromptBadge.classList.add('hidden');
+        }
+      }
+    },
+
+    /**
+     * Displays timing feedback badge popup on takeoff and plays rating audio (SCRUM-182)
+     */
+    _displayTakeoffFeedback: function (ratingInfo) {
+      if (!ratingInfo) return;
+      var d = this.dom;
+      var rating = (ratingInfo.rating || ratingInfo.quality || 'GREAT').toUpperCase();
+      var text = ratingInfo.accuracyText || 'GREAT!';
+
+      // Synthesize audio rating chime & launch whoosh
+      if (window.SkiAudio) {
+        if (typeof window.SkiAudio.playTakeoffRating === 'function') {
+          window.SkiAudio.playTakeoffRating(rating);
+        }
+        if (typeof window.SkiAudio.playTakeoffLaunch === 'function') {
+          window.SkiAudio.playTakeoffLaunch();
+        } else if (typeof window.SkiAudio.playTakeoff === 'function') {
+          window.SkiAudio.playTakeoff();
+        }
+      }
+
+      if (!d.takeoffFeedbackBadge) return;
+
+      // Reset classes
+      d.takeoffFeedbackBadge.className = 'takeoff-feedback-badge';
+      var variantClass = 'rating-great';
+
+      if (rating.indexOf('PERFECT') !== -1) {
+        variantClass = 'rating-perfect';
+      } else if (rating.indexOf('EARLY') !== -1) {
+        variantClass = 'rating-early';
+      } else if (rating.indexOf('LATE') !== -1) {
+        variantClass = 'rating-late';
+      } else if (rating.indexOf('MISSED') !== -1) {
+        variantClass = 'rating-missed';
+      }
+
+      d.takeoffFeedbackBadge.classList.add(variantClass);
+      var textEl = d.takeoffFeedbackBadge.querySelector('.feedback-text');
+      if (textEl) {
+        textEl.textContent = text;
+      } else {
+        d.takeoffFeedbackBadge.textContent = text;
+      }
+
+      // Trigger pop animation
+      d.takeoffFeedbackBadge.classList.remove('hidden');
+
+      if (this.feedbackHideTimeout) {
+        clearTimeout(this.feedbackHideTimeout);
+      }
+
+      this.feedbackHideTimeout = setTimeout(function () {
+        if (d.takeoffFeedbackBadge) {
+          d.takeoffFeedbackBadge.classList.add('hidden');
+        }
+      }, 1600);
+    },
+
+    /**
      * Handles primary jump action (Start Inrun / Takeoff Impulse / Telemark Commit)
+     * Responsive across keyboard, mouse click, and touch taps
      */
     triggerJumpAction: function () {
       // Audio unlock on user interaction
@@ -335,11 +480,15 @@
         case 'INRUN':
           // Takeoff impulse at edge
           var takeoffResult = window.SkiPhysics.triggerTakeoff();
-          if (window.SkiAudio) {
-            window.SkiAudio.playTakeoff();
-          }
-          if (takeoffResult && this.dom.jumpPhase) {
-            this.dom.jumpPhase.textContent = takeoffResult.accuracyText;
+          if (takeoffResult) {
+            this._displayTakeoffFeedback(takeoffResult);
+            if (this.dom.jumpPhase) {
+              this.dom.jumpPhase.textContent = takeoffResult.accuracyText;
+            }
+          } else {
+            if (window.SkiAudio && typeof window.SkiAudio.playTakeoffLaunch === 'function') {
+              window.SkiAudio.playTakeoffLaunch();
+            }
           }
           break;
 
@@ -362,7 +511,7 @@
     },
 
     /**
-     * Binds keyboard, mouse, and touch events
+     * Binds keyboard, mouse, and touch events with ultra-responsiveness (SCRUM-182)
      */
     _bindInputs: function () {
       var self = this;
@@ -400,11 +549,9 @@
         });
       }
 
-      // Global Keyboard Controls
+      // Global Keyboard Controls (Space, Enter, Arrow Up/Down, W/S)
       window.addEventListener('keydown', function (e) {
-        // Spacebar or Enter triggers jump action
         if (e.code === 'Space' || e.key === ' ' || e.code === 'Enter') {
-          // Prevent scroll
           if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
             e.preventDefault();
           }
@@ -412,9 +559,6 @@
           self.triggerJumpAction();
         }
 
-        // Aerodynamic Pitch adjustment:
-        // ArrowUp or W: Lean forward / tuck into aerodynamic V-style flight
-        // ArrowDown or S: Flare back / recline
         if (e.code === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
           self.inputs.lean = 1.0;
         } else if (e.code === 'ArrowDown' || e.key === 's' || e.key === 'S') {
@@ -436,10 +580,10 @@
         }
       });
 
-      // Canvas Mouse & Touch controls for intuitive mobile/desktop play
+      // Canvas Mouse & Touch controls
       if (this.canvas) {
         this.canvas.addEventListener('mousedown', function (e) {
-          if (e.button === 0) { // left click
+          if (e.button === 0) {
             self.triggerJumpAction();
           }
         });
@@ -447,12 +591,10 @@
         this.canvas.addEventListener('mousemove', function (e) {
           var rect = self.canvas.getBoundingClientRect();
           var mouseY = e.clientY - rect.top;
-          var normY = (mouseY / rect.height) * 2 - 1; // -1 (top) to +1 (bottom)
-          // Moving mouse up pitches forward (+lean), moving down flares (-lean)
+          var normY = (mouseY / rect.height) * 2 - 1;
           self.inputs.lean = Math.max(-1, Math.min(1, -normY * 1.5));
         });
 
-        // Touch support
         this.canvas.addEventListener('touchstart', function (e) {
           e.preventDefault();
           self.triggerJumpAction();
@@ -493,6 +635,7 @@
       // 4. Update HUD and inspect landing resolution
       if (physicsState) {
         this._updateHUD(physicsState);
+        this._updateTakeoffHUD(physicsState);
         this._checkPhaseTransitions(physicsState);
       }
 
@@ -548,15 +691,12 @@
           if (state.isCrash) {
             // Already played crash sound in playLanding
           } else if (state.distance >= (this.currentHill && this.currentHill.record ? this.currentHill.record : hs + 2)) {
-            // New Hill Record! Fanfare + max crowd
             window.SkiAudio.playFanfare();
             window.SkiAudio.playCrowdCheer(1.0);
           } else if (state.distance >= k) {
-            // Past K-Point: big cheer
             var intensity = 0.5 + (state.distance - k) / (hs - k + 10) * 0.5;
             window.SkiAudio.playCrowdCheer(intensity);
           } else {
-            // Normal polite applause
             window.SkiAudio.playCrowdCheer(0.35);
           }
 
@@ -683,13 +823,12 @@
         var sign = windVal > 0 ? '+' : '';
         this.dom.windSpeed.textContent = sign + windVal.toFixed(1) + ' m/s';
 
-        // Headwind (< 0) arrow points left (➔ rotated or ⬅), Tailwind (> 0) points right
         if (windVal < -0.1) {
           this.dom.windArrow.textContent = '⬅';
-          this.dom.windArrow.style.color = '#38bdf8'; // cold blue headwind
+          this.dom.windArrow.style.color = '#38bdf8';
         } else if (windVal > 0.1) {
           this.dom.windArrow.textContent = '➔';
-          this.dom.windArrow.style.color = '#f59e0b'; // warm tailwind
+          this.dom.windArrow.style.color = '#f59e0b';
         } else {
           this.dom.windArrow.textContent = '•';
           this.dom.windArrow.style.color = '#94a3b8';

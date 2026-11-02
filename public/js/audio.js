@@ -1,10 +1,12 @@
 /**
  * audio.js - Procedural Web Audio API Sound Effects Engine
- * Sprint 1.0 (SCRUM-174) & Sprint 2.0 (SCRUM-178)
+ * Sprint 1.0 (SCRUM-174), Sprint 2.0 (SCRUM-178), Sprint 3.0 (SCRUM-182)
  *
  * Implements 100% synthetic audio for:
  * - FIS Electronic Starting Gate Beeps (playGateBeep('red'|'yellow'|'green')) [SCRUM-178]
  * - Mechanical Gate Latch & Push-off Release (playGateRelease()) [SCRUM-178]
+ * - Synthesized Takeoff Timing Rating Chimes (playTakeoffRating(quality)) [SCRUM-182]
+ * - Enhanced Takeoff Launch Whoosh & Ski Pop (playTakeoffLaunch()) [SCRUM-182]
  * - Wind gusts & ambient winter breeze
  * - Ski friction sliding whoosh on inrun tracks (speed-modulated)
  * - Takeoff impulse & launch whoosh
@@ -120,14 +122,12 @@
       var now = this.ctx.currentTime;
       var isGreen = (type === 'green');
 
-      // Frequency: 880Hz for green clearance, 440Hz for red/yellow preparation
       var freq = isGreen ? 880 : 440;
       var duration = isGreen ? 0.22 : 0.12;
 
       var osc = this.ctx.createOscillator();
       var gain = this.ctx.createGain();
 
-      // Clean electronic square/sine blend for classic broadcast stadium timer beep
       osc.type = isGreen ? 'sine' : 'triangle';
       osc.frequency.setValueAtTime(freq, now);
 
@@ -141,7 +141,6 @@
       osc.start(now);
       osc.stop(now + duration + 0.02);
 
-      // Add high overtone for green to give that crisp FIS World Cup timing chime
       if (isGreen) {
         var overtone = this.ctx.createOscillator();
         var overGain = this.ctx.createGain();
@@ -162,7 +161,6 @@
 
     /**
      * Mechanical gate latch release & skier push-off sound (SCRUM-178).
-     * Combination of metallic click, solenoid release clack, and snow edge crunch.
      */
     playGateRelease: function () {
       this.init();
@@ -186,7 +184,7 @@
       clickOsc.start(now);
       clickOsc.stop(now + 0.08);
 
-      // 2. Mechanical clunk resonance (gate bar lifting)
+      // 2. Mechanical clunk resonance
       var clunkOsc = this.ctx.createOscillator();
       var clunkGain = this.ctx.createGain();
       clunkOsc.type = 'triangle';
@@ -203,7 +201,7 @@
       clunkOsc.start(now + 0.02);
       clunkOsc.stop(now + 0.18);
 
-      // 3. Crisp snow push-off scrape (from noise buffer)
+      // 3. Crisp snow push-off scrape
       if (this.noiseBuffer) {
         var scrape = this.ctx.createBufferSource();
         scrape.buffer = this.noiseBuffer;
@@ -228,6 +226,170 @@
     },
 
     /**
+     * Synthesized Web Audio timing rating chimes (SCRUM-182).
+     * High pitch sparkling chime for PERFECT, melodic major triad for GREAT/GOOD,
+     * dull descending tone for EARLY/LATE, low buzzer thud for MISSED.
+     * @param {string} quality - 'PERFECT' | 'GREAT' | 'GOOD' | 'EARLY' | 'LATE' | 'MISSED'
+     */
+    playTakeoffRating: function (quality) {
+      this.init();
+      if (!this.ctx || this.isMuted) return;
+
+      var now = this.ctx.currentTime;
+      var q = (quality || '').toUpperCase();
+
+      if (q.indexOf('PERFECT') !== -1) {
+        // High sparkling dual-chime arpeggio (E6 -> G#6 -> B6) with sparkling bell sheen
+        var notes = [1318.5, 1661.2, 1975.5];
+        for (var i = 0; i < notes.length; i++) {
+          var t = now + (i * 0.06);
+          var osc = this.ctx.createOscillator();
+          var gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(notes[i], t);
+
+          gain.gain.setValueAtTime(0.001, t);
+          gain.gain.linearRampToValueAtTime(0.24, t + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(t);
+          osc.stop(t + 0.30);
+        }
+      } else if (q.indexOf('GREAT') !== -1 || q.indexOf('GOOD') !== -1) {
+        // Melodic cheerful double chime (C6 -> E6)
+        var greatNotes = [1046.5, 1318.5];
+        for (var j = 0; j < greatNotes.length; j++) {
+          var tg = now + (j * 0.08);
+          var oscG = this.ctx.createOscillator();
+          var gainG = this.ctx.createGain();
+          oscG.type = 'sine';
+          oscG.frequency.setValueAtTime(greatNotes[j], tg);
+
+          gainG.gain.setValueAtTime(0.001, tg);
+          gainG.gain.linearRampToValueAtTime(0.20, tg + 0.015);
+          gainG.gain.exponentialRampToValueAtTime(0.001, tg + 0.22);
+
+          oscG.connect(gainG);
+          gainG.connect(this.masterGain);
+          oscG.start(tg);
+          oscG.stop(tg + 0.24);
+        }
+      } else if (q.indexOf('EARLY') !== -1 || q.indexOf('LATE') !== -1) {
+        // Dull descending two-tone warning blip (A4 -> F4)
+        var warnNotes = [440.0, 349.2];
+        for (var k = 0; k < warnNotes.length; k++) {
+          var tw = now + (k * 0.09);
+          var oscW = this.ctx.createOscillator();
+          var gainW = this.ctx.createGain();
+          oscW.type = 'triangle';
+          oscW.frequency.setValueAtTime(warnNotes[k], tw);
+
+          gainW.gain.setValueAtTime(0.001, tw);
+          gainW.gain.linearRampToValueAtTime(0.18, tw + 0.015);
+          gainW.gain.exponentialRampToValueAtTime(0.001, tw + 0.16);
+
+          oscW.connect(gainW);
+          gainW.connect(this.masterGain);
+          oscW.start(tw);
+          oscW.stop(tw + 0.18);
+        }
+      } else {
+        // MISSED: low hollow slide thud (220Hz down to 110Hz)
+        var oscM = this.ctx.createOscillator();
+        var gainM = this.ctx.createGain();
+        oscM.type = 'sawtooth';
+        oscM.frequency.setValueAtTime(220, now);
+        oscM.frequency.exponentialRampToValueAtTime(90, now + 0.18);
+
+        gainM.gain.setValueAtTime(0.001, now);
+        gainM.gain.linearRampToValueAtTime(0.18, now + 0.01);
+        gainM.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+        oscM.connect(gainM);
+        gainM.connect(this.masterGain);
+        oscM.start(now);
+        oscM.stop(now + 0.24);
+      }
+    },
+
+    /**
+     * Enhanced satisfying dynamic air whoosh + ski pop at takeoff (SCRUM-182).
+     */
+    playTakeoffLaunch: function () {
+      this.init();
+      if (!this.ctx || this.isMuted) return;
+
+      this.stopInrunWhoosh();
+      var now = this.ctx.currentTime;
+
+      // 1. Explosive kick spring impulse (bass pop + resonator)
+      var osc = this.ctx.createOscillator();
+      var oscGain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.exponentialRampToValueAtTime(48, now + 0.22);
+
+      oscGain.gain.setValueAtTime(0.55, now);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+      osc.connect(oscGain);
+      oscGain.connect(this.masterGain);
+
+      osc.start(now);
+      osc.stop(now + 0.26);
+
+      // 2. High-speed ski edge release 'pop'
+      var edgeOsc = this.ctx.createOscillator();
+      var edgeGain = this.ctx.createGain();
+      edgeOsc.type = 'triangle';
+      edgeOsc.frequency.setValueAtTime(880, now);
+      edgeOsc.frequency.exponentialRampToValueAtTime(240, now + 0.08);
+
+      edgeGain.gain.setValueAtTime(0.32, now);
+      edgeGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+      edgeOsc.connect(edgeGain);
+      edgeGain.connect(this.masterGain);
+
+      edgeOsc.start(now);
+      edgeOsc.stop(now + 0.10);
+
+      // 3. Dynamic launch whoosh air puff (expanding resonant bandpass noise)
+      if (this.noiseBuffer) {
+        var noise = this.ctx.createBufferSource();
+        noise.buffer = this.noiseBuffer;
+
+        var filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(260, now);
+        filter.frequency.exponentialRampToValueAtTime(1800, now + 0.09);
+        filter.frequency.exponentialRampToValueAtTime(320, now + 0.40);
+        filter.Q.setValueAtTime(2.6, now);
+
+        var noiseGain = this.ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.01, now);
+        noiseGain.gain.linearRampToValueAtTime(0.48, now + 0.06);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(this.masterGain);
+
+        noise.start(now);
+        noise.stop(now + 0.44);
+      }
+    },
+
+    /**
+     * Backward-compatible alias for playTakeoff
+     */
+    playTakeoff: function () {
+      this.playTakeoffLaunch();
+    },
+
+    /**
      * Plays or updates the ski inrun track sliding whoosh.
      * Speed is in km/h (0 to 110)
      */
@@ -239,7 +401,6 @@
       var normalizedSpeed = Math.max(0, Math.min(1.0, (speed || 0) / 95));
 
       if (!this.inrunSource) {
-        // Build looped inrun sliding noise generator
         var source = this.ctx.createBufferSource();
         source.buffer = this.noiseBuffer;
         source.loop = true;
@@ -263,9 +424,8 @@
         this.inrunGain = gain;
       }
 
-      // Modulate frequency and volume based on speed
       if (this.inrunFilter && this.inrunGain) {
-        var targetFreq = 400 + normalizedSpeed * 1800; // 400Hz up to 2200Hz
+        var targetFreq = 400 + normalizedSpeed * 1800;
         var targetVol = normalizedSpeed * 0.38;
 
         this.inrunFilter.frequency.cancelScheduledValues(now);
@@ -297,58 +457,6 @@
             self.inrunGain = null;
           }
         }, 100);
-      }
-    },
-
-    /**
-     * Takeoff impulse sound: deep pop + sharp resonant rush of air
-     */
-    playTakeoff: function () {
-      this.init();
-      if (!this.ctx || this.isMuted) return;
-
-      this.stopInrunWhoosh();
-      var now = this.ctx.currentTime;
-
-      // 1. Kick impulse (oscillator pitch drop)
-      var osc = this.ctx.createOscillator();
-      var oscGain = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(160, now);
-      osc.frequency.exponentialRampToValueAtTime(45, now + 0.18);
-
-      oscGain.gain.setValueAtTime(0.45, now);
-      oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-
-      osc.connect(oscGain);
-      oscGain.connect(this.masterGain);
-
-      osc.start(now);
-      osc.stop(now + 0.22);
-
-      // 2. Launch whoosh air puff
-      if (this.noiseBuffer) {
-        var noise = this.ctx.createBufferSource();
-        noise.buffer = this.noiseBuffer;
-
-        var filter = this.ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(300, now);
-        filter.frequency.exponentialRampToValueAtTime(1400, now + 0.08);
-        filter.frequency.exponentialRampToValueAtTime(250, now + 0.35);
-        filter.Q.setValueAtTime(2.2, now);
-
-        var noiseGain = this.ctx.createGain();
-        noiseGain.gain.setValueAtTime(0.01, now);
-        noiseGain.gain.linearRampToValueAtTime(0.4, now + 0.05);
-        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
-
-        noise.connect(filter);
-        filter.connect(noiseGain);
-        noiseGain.connect(this.masterGain);
-
-        noise.start(now);
-        noise.stop(now + 0.38);
       }
     },
 
@@ -386,7 +494,6 @@
       }
 
       if (this.windFilter && this.windGain) {
-        // High speed or forward pitch creates higher wind hiss
         var freq = 600 + normalizedSpeed * 1000 + (lean || 0) * 300;
         var vol = 0.12 + normalizedSpeed * 0.22;
 
@@ -433,7 +540,6 @@
       var now = this.ctx.currentTime;
 
       if (isCrash) {
-        // Crash sound: distorted sub thud + noisy crunch + rattling pitch drop
         var crashOsc = this.ctx.createOscillator();
         var crashGain = this.ctx.createGain();
         crashOsc.type = 'sawtooth';
@@ -448,7 +554,6 @@
         crashOsc.start(now);
         crashOsc.stop(now + 0.48);
 
-        // Snow crunch blast
         if (this.noiseBuffer) {
           var snowNoise = this.ctx.createBufferSource();
           snowNoise.buffer = this.noiseBuffer;
@@ -470,11 +575,8 @@
           snowNoise.stop(now + 0.65);
         }
 
-        // Groan / disappointment crowd murmur
         this.playCrowdMurmur();
       } else {
-        // Successful landing
-        // Thud
         var landOsc = this.ctx.createOscillator();
         var landGain = this.ctx.createGain();
         landOsc.type = 'triangle';
@@ -489,14 +591,12 @@
         landOsc.start(now);
         landOsc.stop(now + 0.2);
 
-        // Snow carve hiss
         if (this.noiseBuffer) {
           var carve = this.ctx.createBufferSource();
           carve.buffer = this.noiseBuffer;
 
           var carveFilter = this.ctx.createBiquadFilter();
           carveFilter.type = 'bandpass';
-          // Telemark is sharper and crisper
           carveFilter.frequency.setValueAtTime(isTelemark ? 1800 : 900, now);
           carveFilter.Q.setValueAtTime(2.0, now);
 
@@ -516,7 +616,6 @@
 
     /**
      * Procedural crowd applause and stadium roar
-     * Intensity is scaled from 0 (quiet) to 1.0 (stadium explosion)
      */
     playCrowdCheer: function (intensity) {
       this.init();
@@ -525,7 +624,6 @@
       var now = this.ctx.currentTime;
       var level = Math.max(0.15, Math.min(1.0, intensity || 0.6));
 
-      // Layer 1: Stadium roar (filtered low noise surge)
       var roar = this.ctx.createBufferSource();
       roar.buffer = this.noiseBuffer;
 
@@ -547,7 +645,6 @@
       roar.start(now);
       roar.stop(now + 2.5);
 
-      // Layer 2: Shimmering clapping applause (higher frequency band with mild tremolo)
       var clap = this.ctx.createBufferSource();
       clap.buffer = this.noiseBuffer;
 
@@ -606,7 +703,6 @@
       if (!this.ctx || this.isMuted) return;
 
       var now = this.ctx.currentTime;
-      // Arpeggio notes: C5, E5, G5, C6
       var notes = [523.25, 659.25, 783.99, 1046.50];
       var noteDur = 0.11;
 
