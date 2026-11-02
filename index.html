@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SPACE INVADERS - Classic Arcade</title>
+  <!-- Relative paths without leading slash for Cloud Run subpath compatibility -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="arcade-cabinet">
+    <!-- Marquee Banner Header -->
+    <header class="marquee-header">
+      <div class="marquee-logo">
+        <span class="neon-pink">SPACE</span> <span class="neon-cyan">INVADERS</span>
+      </div>
+      <div class="marquee-sub">TAITO 1978 TRIBUTE &bull; INSERT COIN</div>
+    </header>
+
+    <!-- Main Screen Bezel with CRT Monitor Effect -->
+    <main class="arcade-screen-bezel">
+      <div class="crt-screen-container">
+        <!-- CRT Effects Overlays: Scanlines & Vignette Glow -->
+        <div class="crt-overlay crt-scanlines" aria-hidden="true"></div>
+        <div class="crt-overlay crt-vignette" aria-hidden="true"></div>
+
+        <!-- HUD: Heads Up Display -->
+        <div class="arcade-hud" role="region" aria-label="Game Status and HUD">
+          <div class="hud-item hud-score">
+            <span class="hud-label">SCORE&lt;1&gt;</span>
+            <span id="score-display" class="hud-value neon-green">0000</span>
+          </div>
+          <div class="hud-item hud-high-score">
+            <span class="hud-label">HI-SCORE</span>
+            <span id="high-score-display" class="hud-value neon-cyan">0000</span>
+          </div>
+          <div class="hud-item hud-wave">
+            <span class="hud-label">WAVE</span>
+            <span id="wave-display" class="hud-value neon-yellow">01</span>
+          </div>
+          <div class="hud-item hud-lives">
+            <span class="hud-label">LIVES</span>
+            <div id="lives-display" class="hud-lives-icons" aria-label="Remaining Lives">
+              <span class="life-icon">▲</span>
+              <span class="life-icon">▲</span>
+              <span class="life-icon">▲</span>
+            </div>
+          </div>
+          <div class="hud-item hud-audio-controls">
+            <button id="audio-mute-btn" class="hud-btn" aria-label="Toggle Sound" title="Toggle Sound">
+              <span id="audio-icon">🔊</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Canvas Frame -->
+        <div class="canvas-wrapper">
+          <canvas id="game-canvas" width="800" height="600" aria-label="Space Invaders Game Screen">
+            Your browser does not support HTML5 Canvas.
+          </canvas>
+
+          <!-- Start Game Overlay Modal -->
+          <div id="start-modal" class="game-modal active" role="dialog" aria-modal="true" aria-labelledby="start-title">
+            <div class="modal-content">
+              <h1 id="start-title" class="modal-title neon-pink">SPACE INVADERS</h1>
+              <div class="alien-score-table">
+                <p class="score-legend">*SCORE ADVANCE TABLE*</p>
+                <div class="legend-row">
+                  <span class="legend-icon saucer-icon">🛸</span>
+                  <span class="legend-text">= ? MYSTERY</span>
+                </div>
+                <div class="legend-row">
+                  <span class="legend-icon alien-top-icon">👾</span>
+                  <span class="legend-text">= 30 POINTS</span>
+                </div>
+                <div class="legend-row">
+                  <span class="legend-icon alien-mid-icon">👾</span>
+                  <span class="legend-text">= 20 POINTS</span>
+                </div>
+                <div class="legend-row">
+                  <span class="legend-icon alien-bot-icon">👾</span>
+                  <span class="legend-text">= 10 POINTS</span>
+                </div>
+              </div>
+              <p class="modal-controls-hint">
+                <span class="key-pill">◄ / A</span> <span class="key-pill">► / D</span> MOVE &nbsp;|&nbsp; 
+                <span class="key-pill">SPACE</span> FIRE &nbsp;|&nbsp; 
+                <span class="key-pill">P</span> PAUSE
+              </p>
+              <button id="start-btn" class="arcade-btn neon-btn">INSERT COIN / PLAY</button>
+            </div>
+          </div>
+
+          <!-- Pause Game Overlay Modal -->
+          <div id="pause-modal" class="game-modal" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+            <div class="modal-content">
+              <h2 id="pause-title" class="modal-title neon-yellow">GAME PAUSED</h2>
+              <p class="modal-msg">PRESS RESUME OR [P] TO CONTINUE</p>
+              <button id="resume-btn" class="arcade-btn neon-btn">RESUME GAME</button>
+            </div>
+          </div>
+
+          <!-- Game Over Modal -->
+          <div id="game-over-modal" class="game-modal" role="dialog" aria-modal="true" aria-labelledby="game-over-title">
+            <div class="modal-content">
+              <h2 id="game-over-title" class="modal-title neon-red">GAME OVER</h2>
+              <p class="modal-msg final-score-text">FINAL SCORE: <span id="final-score-val" class="neon-green">0000</span></p>
+              <p id="new-high-score-msg" class="new-record-text neon-cyan" style="display:none;">★ NEW HIGH SCORE! ★</p>
+              <button id="restart-btn" class="arcade-btn neon-btn">PLAY AGAIN</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Mobile/Touch Control Panel -->
+    <nav class="arcade-touch-controls" aria-label="Touch Game Controls">
+      <div class="touch-directional">
+        <button id="btn-left" class="touch-btn touch-btn-nav" aria-label="Move Left">◄ LEFT</button>
+        <button id="btn-right" class="touch-btn touch-btn-nav" aria-label="Move Right">RIGHT ►</button>
+      </div>
+      <div class="touch-action">
+        <button id="btn-fire" class="touch-btn touch-btn-fire" aria-label="Fire Cannon">FIRE 💥</button>
+      </div>
+    </nav>
+
+    <!-- Cabinet Footer -->
+    <footer class="arcade-footer">
+      <span>TAITO 1978 ORIGINAL CONCEPT &bull; HTML5 CANVAS ENGINE &bull; 800&times;600 DISPLAY</span>
+    </footer>
+  </div>
+
+  <!-- Script Modules in exact order per DESIGN.md contract (relative paths without leading slash) -->
+  <script src="audio.js"></script>
+  <script src="player.js"></script>
+  <script src="invaders.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

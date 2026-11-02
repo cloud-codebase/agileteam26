@@ -1,0 +1,442 @@
+/* ==========================================================================
+   SPACE INVADERS - RETRO ARCADE CABINET & CRT STYLING
+   Adheres to DESIGN.md specs for 800x600 canvas, CRT scanlines, and HUD
+   ========================================================================== */
+
+/* Embedded Arcade Pixel Font */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+:root {
+  --neon-green: #39ff14;
+  --neon-cyan: #00f0ff;
+  --neon-pink: #ff007f;
+  --neon-yellow: #ffff00;
+  --neon-red: #ff3333;
+  --cabinet-dark: #0a0a12;
+  --cabinet-bezel: #121224;
+  --crt-bg: #000208;
+  --text-muted: #8888aa;
+  --font-arcade: 'Press Start 2P', 'Courier New', Courier, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, #1b1035 0%, #070711 100%);
+  color: #ffffff;
+  font-family: var(--font-arcade);
+  overflow-x: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Arcade Cabinet Outer Frame */
+.arcade-cabinet {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 920px;
+  min-height: 100vh;
+  padding: 12px 16px;
+  margin: 0 auto;
+}
+
+/* Marquee Header */
+.marquee-header {
+  width: 100%;
+  max-width: 840px;
+  background: linear-gradient(180deg, #2a0845 0%, #0c0824 100%);
+  border: 4px solid #ff007f;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 0 20px rgba(255, 0, 127, 0.4), inset 0 0 15px rgba(0, 240, 255, 0.3);
+  padding: 10px 16px;
+  text-align: center;
+  margin-bottom: 0;
+}
+
+.marquee-logo {
+  font-size: clamp(18px, 4vw, 28px);
+  letter-spacing: 4px;
+  text-shadow: 0 0 10px rgba(255, 0, 127, 0.8), 0 0 20px rgba(0, 240, 255, 0.6);
+  margin-bottom: 4px;
+}
+
+.marquee-sub {
+  font-size: 9px;
+  color: var(--neon-cyan);
+  letter-spacing: 2px;
+  opacity: 0.9;
+}
+
+/* Neon Text Utilities */
+.neon-pink { color: var(--neon-pink); text-shadow: 0 0 8px var(--neon-pink); }
+.neon-cyan { color: var(--neon-cyan); text-shadow: 0 0 8px var(--neon-cyan); }
+.neon-green { color: var(--neon-green); text-shadow: 0 0 8px var(--neon-green); }
+.neon-yellow { color: var(--neon-yellow); text-shadow: 0 0 8px var(--neon-yellow); }
+.neon-red { color: var(--neon-red); text-shadow: 0 0 8px var(--neon-red); }
+
+/* Main Screen Bezel with CRT Monitor Effect */
+.arcade-screen-bezel {
+  width: 100%;
+  max-width: 840px;
+  background: var(--cabinet-bezel);
+  border: 6px solid #2d2b52;
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  padding: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), inset 0 0 25px rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+}
+
+.crt-screen-container {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  background-color: var(--crt-bg);
+  border: 3px solid #1a1a2e;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: inset 0 0 40px rgba(0, 240, 255, 0.15), 0 0 20px rgba(0, 0, 0, 0.9);
+}
+
+/* CRT Scanlines and Glow Overlays */
+.crt-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.crt-scanlines {
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.35) 50%
+  );
+  background-size: 100% 4px;
+}
+
+.crt-vignette {
+  background: radial-gradient(circle at center, transparent 65%, rgba(0, 0, 0, 0.75) 100%);
+  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8);
+}
+
+/* CRT Gentle Flicker */
+@keyframes crtFlicker {
+  0% { opacity: 0.99; }
+  50% { opacity: 1; }
+  100% { opacity: 0.98; }
+}
+
+.crt-screen-container::after {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: rgba(18, 16, 16, 0.05);
+  opacity: 0;
+  z-index: 11;
+  pointer-events: none;
+  animation: crtFlicker 0.15s infinite;
+}
+
+/* HUD - Heads Up Display */
+.arcade-hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(5, 5, 12, 0.85);
+  border-bottom: 2px solid #22223b;
+  position: relative;
+  z-index: 5;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+.hud-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hud-label {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.hud-value {
+  font-weight: bold;
+}
+
+.hud-lives-icons {
+  display: flex;
+  gap: 6px;
+  color: var(--neon-green);
+  font-size: 12px;
+}
+
+.life-icon {
+  display: inline-block;
+  text-shadow: 0 0 6px var(--neon-green);
+}
+
+.hud-btn {
+  background: #1c1a35;
+  border: 1px solid var(--neon-cyan);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.hud-btn:hover {
+  background: var(--neon-cyan);
+  color: #000;
+  box-shadow: 0 0 8px var(--neon-cyan);
+}
+
+/* Canvas Wrapper & Native 800x600 Display */
+.canvas-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 800 / 600;
+  background-color: #000000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#game-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background-color: #000000;
+}
+
+/* Game Modal Overlays (Start, Pause, GameOver) */
+.game-modal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 2, 8, 0.88);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 20;
+  text-align: center;
+  padding: 20px;
+}
+
+.game-modal.active {
+  display: flex;
+}
+
+.modal-content {
+  max-width: 580px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.modal-title {
+  font-size: clamp(18px, 3.5vw, 26px);
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+
+.modal-msg {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #e2e8f0;
+}
+
+/* Alien Score Advance Table */
+.alien-score-table {
+  background: rgba(16, 12, 36, 0.7);
+  border: 1px solid #332d56;
+  border-radius: 6px;
+  padding: 12px 18px;
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.score-legend {
+  color: var(--neon-cyan);
+  margin-bottom: 4px;
+  font-size: 10px;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+}
+
+.legend-icon {
+  font-size: 16px;
+  width: 24px;
+  text-align: center;
+}
+
+.legend-text {
+  color: #ffffff;
+}
+
+.modal-controls-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+.key-pill {
+  display: inline-block;
+  background: #252243;
+  color: var(--neon-cyan);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid #3f3b6c;
+  font-size: 9px;
+}
+
+/* Arcade Push Buttons */
+.arcade-btn {
+  font-family: var(--font-arcade);
+  font-size: 12px;
+  padding: 12px 24px;
+  border: 2px solid var(--neon-green);
+  background: #112a15;
+  color: var(--neon-green);
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
+  margin-top: 6px;
+}
+
+.arcade-btn:hover {
+  background: var(--neon-green);
+  color: #000;
+  box-shadow: 0 0 20px var(--neon-green);
+  transform: scale(1.04);
+}
+
+.arcade-btn:active {
+  transform: scale(0.98);
+}
+
+/* Touch Control Panel */
+.arcade-touch-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 840px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  gap: 12px;
+}
+
+.touch-directional {
+  display: flex;
+  gap: 10px;
+}
+
+.touch-btn {
+  font-family: var(--font-arcade);
+  font-size: 11px;
+  padding: 14px 18px;
+  background: #1b1834;
+  color: #ffffff;
+  border: 2px solid #3d3768;
+  border-radius: 6px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: all 0.1s ease;
+}
+
+.touch-btn:active {
+  background: #3d3768;
+  transform: translateY(2px);
+}
+
+.touch-btn-nav {
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+}
+
+.touch-btn-fire {
+  color: var(--neon-pink);
+  border-color: var(--neon-pink);
+  background: #2a0b1d;
+  font-size: 12px;
+  padding: 14px 24px;
+}
+
+.touch-btn-fire:active {
+  background: var(--neon-pink);
+  color: #000;
+}
+
+/* Cabinet Footer */
+.arcade-footer {
+  margin-top: 12px;
+  font-size: 8px;
+  color: var(--text-muted);
+  text-align: center;
+  opacity: 0.7;
+  letter-spacing: 1px;
+}
+
+/* Mobile & Small Screen Adaptations */
+@media (max-width: 600px) {
+  .arcade-cabinet {
+    padding: 6px;
+  }
+  .marquee-header {
+    padding: 6px 10px;
+  }
+  .arcade-screen-bezel {
+    padding: 8px;
+    border-width: 4px;
+  }
+  .arcade-hud {
+    font-size: 9px;
+    padding: 6px 8px;
+  }
+  .hud-label {
+    font-size: 8px;
+  }
+  .touch-btn {
+    padding: 12px 14px;
+    font-size: 10px;
+  }
+}
