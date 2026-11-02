@@ -23,6 +23,17 @@
   --fis-yellow-dim: #423207;
   --fis-green: #22c55e;
   --fis-green-dim: #052e16;
+
+  /* Take-off HUD & Timing Window Colors (SCRUM-181) */
+  --timing-early: #eab308;
+  --timing-sweet: #22c55e;
+  --timing-sweet-cyan: #06b6d4;
+  --timing-late: #ef4444;
+  --rating-perfect: #22c55e;
+  --rating-great: #38bdf8;
+  --rating-early: #eab308;
+  --rating-late: #ef4444;
+  --rating-missed: #94a3b8;
 }
 
 * {
@@ -475,6 +486,307 @@ body {
 @keyframes neon-glow {
   0%, 100% { transform: scale(1); filter: brightness(1); }
   50% { transform: scale(1.15); filter: brightness(1.3); }
+}
+
+/* ============================================================
+   Take-Off Timing HUD Gauge & Feedback Badges (SCRUM-181)
+   ============================================================ */
+
+/* Take-off HUD Container (#takeoff-hud-container) */
+.takeoff-hud-container {
+  position: absolute;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 14, 23, 0.94);
+  border: 2px solid var(--border-neon);
+  border-radius: 8px;
+  padding: 8px 16px;
+  width: 90%;
+  max-width: 480px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), 0 0 20px rgba(56, 189, 248, 0.35);
+  pointer-events: none;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(2px);
+}
+
+.takeoff-hud-container.hidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-14px);
+  pointer-events: none;
+}
+
+/* Header bar for takeoff gauge */
+.takeoff-hud-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #e2e8f0;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+  padding-bottom: 4px;
+}
+
+.takeoff-hud-icon {
+  color: var(--text-gold);
+  font-size: 13px;
+  animation: neon-glow 1.2s infinite ease-in-out;
+}
+
+.takeoff-hud-title {
+  color: var(--text-bright);
+  text-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
+  flex: 1;
+}
+
+.takeoff-dist-label {
+  font-size: 11px;
+  color: var(--text-gold);
+  background: rgba(245, 158, 11, 0.15);
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+/* The Timing Progress Bar Track (#takeoff-timing-bar) */
+.takeoff-timing-bar {
+  position: relative;
+  width: 100%;
+  height: 24px;
+  background: #020617;
+  border: 2px solid #334155;
+  border-radius: 6px;
+  display: flex;
+  overflow: visible;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+/* Zones layout: Early (12m -> 3.0m = 75%), Sweet Spot (3.0m -> 0.5m = 21%), Late Lip (0.5m -> 0m = 4%) */
+.takeoff-zone {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  overflow: hidden;
+}
+
+.takeoff-zone .zone-label {
+  position: relative;
+  z-index: 2;
+  opacity: 0.85;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+/* Early Approach Zone */
+.zone-early {
+  width: 70%;
+  background: linear-gradient(90deg, rgba(30, 41, 59, 0.9) 0%, rgba(180, 83, 9, 0.4) 100%);
+  color: #fef08a;
+  border-right: 1px dashed rgba(245, 158, 11, 0.5);
+}
+
+/* Sweet Spot Zone (Cyan to Lime Glow) */
+.zone-sweet {
+  width: 22%;
+  background: linear-gradient(90deg, rgba(6, 182, 212, 0.6) 0%, rgba(34, 197, 94, 0.8) 100%);
+  color: #ffffff;
+  border-left: 2px solid var(--timing-sweet-cyan);
+  border-right: 2px solid var(--timing-sweet);
+  box-shadow: inset 0 0 12px rgba(34, 197, 94, 0.5), 0 0 10px rgba(34, 197, 94, 0.3);
+  animation: sweetGlow 1.2s infinite alternate ease-in-out;
+}
+
+/* Late / Edge Lip Zone */
+.zone-late {
+  width: 8%;
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.7) 0%, rgba(185, 28, 28, 0.95) 100%);
+  color: #fee2e2;
+  border-left: 2px solid #ef4444;
+}
+
+@keyframes sweetGlow {
+  0% { box-shadow: inset 0 0 8px rgba(34, 197, 94, 0.4), 0 0 8px rgba(6, 182, 212, 0.4); }
+  100% { box-shadow: inset 0 0 16px rgba(34, 197, 94, 0.8), 0 0 18px rgba(34, 197, 94, 0.7); }
+}
+
+/* Live Needle Indicator (#takeoff-needle) */
+.takeoff-needle {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  left: 0%; /* Dynamic from game.js: 0% (far early) -> 100% (lip) */
+  width: 4px;
+  transform: translateX(-50%);
+  z-index: 10;
+  pointer-events: none;
+  transition: left 0.05s linear;
+}
+
+.takeoff-needle .needle-tip {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 7px solid #38bdf8;
+  filter: drop-shadow(0 0 4px #38bdf8);
+}
+
+.takeoff-needle .needle-line {
+  position: absolute;
+  top: 6px;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  background: linear-gradient(180deg, #38bdf8 0%, #ffffff 50%, #38bdf8 100%);
+  box-shadow: 0 0 8px #38bdf8, 0 0 16px rgba(56, 189, 248, 0.9);
+  border-radius: 2px;
+}
+
+/* Legend info beneath the gauge */
+.takeoff-hud-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8.5px;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+
+.legend-item.legend-early { color: #fde047; }
+.legend-item.legend-sweet { color: #86efac; font-weight: bold; }
+.legend-item.legend-late { color: #fca5a5; }
+
+/* Large Retro Pulsing Take-off Prompt Badge (#takeoff-prompt-badge) */
+.takeoff-prompt-badge {
+  position: absolute;
+  top: 154px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(5, 46, 22, 0.95);
+  border: 3px solid #22c55e;
+  border-radius: 8px;
+  padding: 8px 24px;
+  color: #86efac;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  z-index: 16;
+  pointer-events: none;
+  box-shadow: 0 0 25px rgba(34, 197, 94, 0.7), inset 0 0 15px rgba(34, 197, 94, 0.4);
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: jumpPulse 0.5s infinite alternate ease-in-out;
+}
+
+.takeoff-prompt-badge.hidden {
+  opacity: 0;
+  transform: translateX(-50%) scale(0.85);
+  pointer-events: none;
+}
+
+.prompt-glow-pulse {
+  text-shadow: 0 0 8px #22c55e, 0 0 16px rgba(34, 197, 94, 0.9);
+}
+
+@keyframes jumpPulse {
+  0% { transform: translateX(-50%) scale(0.96); box-shadow: 0 0 15px rgba(34, 197, 94, 0.5); }
+  100% { transform: translateX(-50%) scale(1.06); box-shadow: 0 0 32px rgba(34, 197, 94, 0.9), 0 0 45px rgba(34, 197, 94, 0.5); }
+}
+
+/* Take-off Rating Popup Feedback Badge (#takeoff-feedback-badge) */
+.takeoff-feedback-badge {
+  position: absolute;
+  top: 154px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 22px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  z-index: 18;
+  pointer-events: none;
+  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.takeoff-feedback-badge.hidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px) scale(0.85);
+  pointer-events: none;
+}
+
+/* Rating variants */
+.takeoff-feedback-badge.rating-perfect {
+  background: rgba(5, 46, 22, 0.95);
+  border: 3px solid var(--rating-perfect);
+  color: #86efac;
+  box-shadow: 0 0 30px rgba(34, 197, 94, 0.8), inset 0 0 15px rgba(34, 197, 94, 0.4);
+  animation: feedbackPop 0.3s ease-out;
+}
+
+.takeoff-feedback-badge.rating-great {
+  background: rgba(12, 44, 71, 0.95);
+  border: 3px solid var(--rating-great);
+  color: #bae6fd;
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.8), inset 0 0 12px rgba(56, 189, 248, 0.4);
+  animation: feedbackPop 0.3s ease-out;
+}
+
+.takeoff-feedback-badge.rating-early {
+  background: rgba(66, 50, 7, 0.95);
+  border: 3px solid var(--rating-early);
+  color: #fef08a;
+  box-shadow: 0 0 25px rgba(234, 179, 8, 0.7), inset 0 0 12px rgba(234, 179, 8, 0.3);
+  animation: feedbackPop 0.3s ease-out;
+}
+
+.takeoff-feedback-badge.rating-late {
+  background: rgba(69, 26, 26, 0.95);
+  border: 3px solid var(--rating-late);
+  color: #fca5a5;
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.8), inset 0 0 12px rgba(239, 68, 68, 0.4);
+  animation: feedbackPop 0.3s ease-out;
+}
+
+.takeoff-feedback-badge.rating-missed {
+  background: rgba(30, 41, 59, 0.95);
+  border: 2px solid var(--rating-missed);
+  color: #cbd5e1;
+  box-shadow: 0 0 18px rgba(148, 163, 184, 0.5);
+  animation: feedbackPop 0.3s ease-out;
+}
+
+.takeoff-feedback-badge .feedback-text {
+  text-shadow: 0 0 8px currentColor;
+}
+
+@keyframes feedbackPop {
+  0% { transform: translateX(-50%) scale(0.6); opacity: 0; }
+  60% { transform: translateX(-50%) scale(1.15); opacity: 1; }
+  100% { transform: translateX(-50%) scale(1.0); opacity: 1; }
 }
 
 /* Wind Indicator Specifics */

@@ -96,6 +96,51 @@
           <span class="gate-prompt-text">GREEN LIGHT - PRESS SPACE OR CLICK TO START</span>
         </div>
 
+        <!-- Take-Off Timing HUD Gauge & Feedback Badges (SCRUM-181) -->
+        <div id="takeoff-hud-container" class="takeoff-hud-container hidden">
+          <div class="takeoff-hud-header">
+            <span class="takeoff-hud-icon">⚡</span>
+            <span class="takeoff-hud-title">TAKEOFF TIMING WINDOW</span>
+            <span id="takeoff-dist-label" class="takeoff-dist-label">12.0m TO LIP</span>
+          </div>
+
+          <!-- Progress gauge tracking distance to takeoff edge (100% -> 0%) -->
+          <div id="takeoff-timing-bar" class="takeoff-timing-bar">
+            <!-- Colored Zones -->
+            <div class="takeoff-zone zone-early" title="EARLY ZONE (Pre-Approach)">
+              <span class="zone-label">EARLY</span>
+            </div>
+            <div class="takeoff-zone zone-sweet" title="SWEET SPOT (Maximum Lift Window)">
+              <span class="zone-label">SWEET SPOT</span>
+            </div>
+            <div class="takeoff-zone zone-late" title="LATE / EDGE LIP">
+              <span class="zone-label">EDGE</span>
+            </div>
+
+            <!-- Live indicator needle moving toward edge -->
+            <div id="takeoff-needle" class="takeoff-needle">
+              <div class="needle-tip"></div>
+              <div class="needle-line"></div>
+            </div>
+          </div>
+
+          <div class="takeoff-hud-legend">
+            <span class="legend-item legend-early">● Approach</span>
+            <span class="legend-item legend-sweet">● Max Lift (0.5m-3.0m)</span>
+            <span class="legend-item legend-late">● Edge Lip (0m)</span>
+          </div>
+        </div>
+
+        <!-- Pulsing Take-off Prompt Badge (SCRUM-181) -->
+        <div id="takeoff-prompt-badge" class="takeoff-prompt-badge hidden">
+          <span class="prompt-glow-pulse">⚡ JUMP NOW! [SPACE / CLICK] ⚡</span>
+        </div>
+
+        <!-- Take-off Rating Feedback Popup Badge (SCRUM-181) -->
+        <div id="takeoff-feedback-badge" class="takeoff-feedback-badge hidden rating-perfect">
+          <span class="feedback-text">PERFECT! (+LIFT)</span>
+        </div>
+
         <!-- Center Flight Distance Tracker -->
         <div class="hud-center-flight" id="flight-distance-display">
           <div class="flight-distance-label">LIVE DISTANCE</div>
