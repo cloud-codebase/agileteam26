@@ -1,7 +1,7 @@
 /**
  * physics.js - Retro 2D Ski Jumping Physics Engine (DSJ2 inspired)
- * Handles inrun slide acceleration, takeoff impulse timing, V-style aerodynamic lift & drag,
- * pitch balance, dynamic wind vectors, and precise landing / crash detection.
+ * Sprint 2.0: Steeper slope support, upgraded aerodynamic lift-to-drag polar curve for high glide,
+ * sub-pixel takeoff edge evaluation & timing feedback, and starting gate energy scaling.
  */
 (function() {
   'use strict';
@@ -11,14 +11,15 @@
   const AIR_DENSITY = 1.225; // kg/m^3
   const SKIER_MASS = 70.0; // kg with equipment
 
-  // DSJ2 characteristic flight parameters
+  // DSJ2 characteristic flight parameters (Sprint 2.0 Enhanced)
   const OPTIMAL_PITCH_DEG = 22.0; // Angle relative to flight trajectory
-  const MAX_PITCH_CHANGE_RATE = 45.0; // deg / sec
+  const MAX_PITCH_CHANGE_RATE = 48.0; // deg / sec
 
   class SkiJumpPhysics {
     constructor() {
       this.hill = null;
       this.wind = { speed: 0, angle: 0, vx: 0, vy: 0 }; // angle in degrees: 0 = headwind, 180 = tailwind, 90 = updraft, 270 = downdraft
+      this.currentGate = 12;
       this.reset();
     }
 
@@ -32,12 +33,45 @@
       this.pitch = 0; // jumper angle relative to horizontal (deg)
       this.inrunDistance = 0;
       this.takeoffQuality = 0; // 0 to 100%
+      this.takeoffFeedback = null; // { rating: 'PERFECT'|'EARLY'|'LATE', text: string, delta: number }
       this.jumpDistance = 0; // measured along landing slope
       this.landingType = null; // 'telemark', 'two-foot', 'crash'
       this.styleScore = 0;
       this.heightAboveGround = 0;
       this.timeInPhase = 0;
+      this.flightLiftRatio = 1.0;
       this.trail = []; // trajectory history for visual smoke/trail
+    }
+
+    /**
+     * Sets starting gate (1-20). Alters starting position and inrun potential energy.
+     */
+    setGate(gateNumber) {
+      this.currentGate = Math.max(1, Math.min(20, Math.round(gateNumber)));
+      if (this.phase === 'GATE' && this.hill) {
+        this.positionAtGate();
+      }
+    }
+
+    /**
+     * Positions jumper on the inrun according to the selected starting gate.
+     */
+    positionAtGate() {
+      if (!this.hill || !this.hill.geometry) return;
+      const pts = this.hill.geometry.inrunPoints;
+      const defaultGate = (this.hill.gates && this.hill.gates.default) || 12;
+      const gateDiff = this.currentGate - defaultGate;
+
+      // Gate shifts starting index along inrun curve (each gate is ~2.5m along track)
+      const baseIndex = Math.max(0, Math.min(pts.length - 20, Math.floor(pts.length * 0.08)));
+      // Higher gate = higher up track (lower index)
+      const targetIndex = Math.max(0, Math.min(pts.length - 15, baseIndex - gateDiff * 2));
+      const gatePt = pts[targetIndex] || pts[0];
+
+      this.x = gatePt.x;
+      this.y = gatePt.y + 0.1;
+      this.pitch = (Math.atan2(pts[Math.min(pts.length - 1, targetIndex + 1)].y - gatePt.y,
+                               pts[Math.min(pts.length - 1, targetIndex + 1)].x - gatePt.x) * 180) / Math.PI;
     }
 
     /**
@@ -47,6 +81,9 @@
     initJump(hill, wind) {
       this.reset();
       this.hill = hill || window.SkiHills.getHills()[0];
+      if (this.hill.gates && typeof this.hill.gates.default === 'number') {
+        this.currentGate = this.hill.gates.default;
+      }
       const wSpeed = (wind && typeof wind.speed === 'number') ? wind.speed : (Math.random() * 3.5);
       const wAngle = (wind && typeof wind.angle === 'number') ? wind.angle : (Math.random() * 360);
       
@@ -60,18 +97,16 @@
         vy: Math.sin(rad) * wSpeed
       };
 
-      // Start at top of inrun
-      const topPt = this.hill.geometry.inrunPoints[0];
-      this.x = topPt.x;
-      this.y = topPt.y + 0.1;
-      this.pitch = -this.hill.inrun.angle;
+      this.positionAtGate();
       this.phase = 'GATE';
     }
 
     startInrun() {
       if (this.phase === 'GATE') {
         this.phase = 'IN_RUN';
-        this.vx = 2.0; // initial nudge from gate
+        // Initial impulse scaled slightly by starting gate height
+        const gateSpeedBonus = (this.currentGate - 10) * 0.1;
+        this.vx = Math.max(1.5, 2.2 + gateSpeedBonus);
         this.vy = 0;
         this.timeInPhase = 0;
       }
@@ -79,37 +114,64 @@
 
     /**
      * Trigger takeoff impulse when jumper springs off the lip.
-     * Evaluates timing relative to edge (x = 0).
+     * Evaluates sub-pixel timing relative to edge (x = 0).
+     * Returns { quality, timingDeltaMeters, rating: 'PERFECT'|'EARLY'|'LATE' }
      */
     triggerTakeoff() {
-      if (this.phase !== 'IN_RUN') return;
+      if (this.phase !== 'IN_RUN') return this.takeoffFeedback;
 
-      const distToLip = -this.x; // x is <= 0
-      // Ideal takeoff is exactly at lip (-0.5m to 0.0m)
+      const distToLip = -this.x; // x is <= 0 approaching edge at 0
       let quality = 0;
-      if (distToLip < 0) {
-        // Late takeoff past lip
-        quality = Math.max(0, 100 - Math.abs(distToLip) * 60);
-      } else if (distToLip <= 1.2) {
-        // Perfect window
-        quality = 100 - (distToLip / 1.2) * 15;
-      } else if (distToLip <= 6.0) {
-        // Early jump
-        quality = Math.max(20, 85 - (distToLip - 1.2) * 15);
+      let rating = 'PERFECT';
+      let text = 'IDEALNIE! (+100%)';
+
+      if (distToLip < -0.05) {
+        // Late takeoff past the lip
+        const lateDist = Math.abs(distToLip);
+        quality = Math.max(10, 100 - lateDist * 65);
+        rating = 'LATE';
+        text = `SPÓŹNIONE! (+${lateDist.toFixed(2)}m)`;
+      } else if (distToLip <= 0.65) {
+        // Sub-pixel Perfect window right on the lip
+        quality = 100 - (distToLip / 0.65) * 8;
+        rating = 'PERFECT';
+        text = 'PERFECT! (+100%)';
+      } else if (distToLip <= 2.2) {
+        // Good / slightly early
+        quality = Math.max(60, 92 - (distToLip - 0.65) * 20);
+        rating = 'EARLY';
+        text = `DOBRZE (-${distToLip.toFixed(2)}m)`;
+      } else if (distToLip <= 6.5) {
+        // Noticeably early
+        quality = Math.max(30, 60 - (distToLip - 2.2) * 10);
+        rating = 'EARLY';
+        text = `ZA WCZEŚNIE! (-${distToLip.toFixed(2)}m)`;
       } else {
         // Much too early
-        quality = 15;
+        quality = 20;
+        rating = 'EARLY';
+        text = `BARDZO ZA WCZEŚNIE! (-${distToLip.toFixed(1)}m)`;
       }
 
       this.takeoffQuality = Math.round(quality);
+      this.takeoffFeedback = {
+        rating,
+        text,
+        delta: Math.round(distToLip * 100) / 100,
+        quality: this.takeoffQuality
+      };
+
       this.phase = 'TAKEOFF';
       this.timeInPhase = 0;
 
       // Vertical impulse perpendicular to takeoff table
-      const impulsePower = 2.4 * (this.takeoffQuality / 100);
+      // Boosted for high-float trajectory on steeper slopes
+      const impulsePower = 2.85 * (this.takeoffQuality / 100);
       const tableRad = (this.hill.inrun.tableAngle * Math.PI) / 180;
-      this.vx += Math.sin(tableRad) * impulsePower * 0.5;
+      this.vx += Math.sin(tableRad) * impulsePower * 0.45;
       this.vy += Math.cos(tableRad) * impulsePower;
+
+      return this.takeoffFeedback;
     }
 
     /**
@@ -137,9 +199,7 @@
 
       switch (this.phase) {
         case 'GATE':
-          // Awaiting release
-          this.x = this.hill.geometry.inrunPoints[0].x;
-          this.y = this.hill.geometry.inrunPoints[0].y + 0.1;
+          this.positionAtGate();
           break;
 
         case 'IN_RUN':
@@ -147,7 +207,7 @@
           break;
 
         case 'TAKEOFF':
-          // Brief instant transitioning off the lip
+          // Transitioning off the lip
           if (this.x >= 0) {
             this.phase = 'FLIGHT';
           } else {
@@ -174,21 +234,20 @@
 
       // Keep recent position trail for retro smoke / ski ribbon effect
       if (this.phase === 'FLIGHT' || this.phase === 'LANDED') {
-        if (this.trail.length > 60) this.trail.shift();
+        if (this.trail.length > 70) this.trail.shift();
         this.trail.push({ x: this.x, y: this.y });
       }
     }
 
     /**
-     * In-run downhill acceleration along track curve
+     * In-run downhill acceleration along track curve with gate energy scaling
      */
     updateInrun(dt, ground, inputState) {
-      // Slope angle
       const slopeAngle = ground.angle; // negative angle downhill
       // Gravity component along track
       const aParallel = -GRAVITY * Math.sin(slopeAngle);
       // Inrun friction
-      const frictionCoeff = 0.025;
+      const frictionCoeff = 0.022;
       const friction = GRAVITY * Math.cos(slopeAngle) * frictionCoeff;
       const netA = Math.max(0, aParallel - friction);
 
@@ -211,14 +270,21 @@
         if (this.phase === 'IN_RUN') {
           // Passive runoff (no pop impulse)
           this.takeoffQuality = 30;
+          this.takeoffFeedback = {
+            rating: 'LATE',
+            text: 'BRAK WYBICIA (SPÓŹNIONY)',
+            delta: 0,
+            quality: 30
+          };
           this.phase = 'FLIGHT';
         }
       }
     }
 
     /**
-     * V-Style 2D Aerodynamic flight model
-     * Lift and drag dynamically depend on jumper pitch relative to apparent wind.
+     * Upgraded V-Style 2D Aerodynamic flight model (Sprint 2.0 DESIGN.md)
+     * Lift coefficient C_L boosted from 1.35 to 1.75 with optimal pitch 22 deg,
+     * providing genuine altitude clearance over the steeper knoll and sustained glide float.
      */
     updateFlight(dt, ground, inputState) {
       // Pitch control
@@ -227,8 +293,8 @@
       } else if (inputState && inputState.pitchDown) {
         this.pitch -= MAX_PITCH_CHANGE_RATE * dt;
       }
-      // Bound reasonable pitch angles (-35 to +50 deg)
-      this.pitch = Math.max(-30, Math.min(48, this.pitch));
+      // Bound pitch angles (-35 to +50 deg)
+      this.pitch = Math.max(-32, Math.min(48, this.pitch));
 
       // Apparent wind vector (velocity relative to surrounding air mass)
       const uAir = this.vx - this.wind.vx;
@@ -236,29 +302,38 @@
       const vRel = Math.hypot(uAir, vAir);
 
       // Trajectory angle relative to horizontal
-      const trajAngle = Math.atan2(vAir, uAir); // typically negative during flight
+      const trajAngle = Math.atan2(vAir, uAir);
       const trajAngleDeg = (trajAngle * 180) / Math.PI;
 
       // Angle of Attack (alpha) is difference between jumper body pitch and air stream
       const alpha = this.pitch - trajAngleDeg;
-
-      // DSJ2 lift & drag curves (polar curve)
-      // Near ~20-25 degrees alpha, lift peaks, drag is balanced
       const alphaRad = (alpha * Math.PI) / 180;
-      let cl = Math.sin(2 * alphaRad) * 1.35; // Lift coefficient
-      let cd = 0.25 + (1 - Math.cos(alphaRad)) * 1.5; // Drag coefficient
+
+      // Sprint 2.0 Rebalanced Polar Curve:
+      // Peak C_L of 1.75 at ~22 degrees alpha, with streamlined drag for long glide
+      let cl = Math.sin(2 * alphaRad) * 1.75;
+      let cd = 0.22 + (1 - Math.cos(alphaRad)) * 1.35;
+
+      // Optimal flight efficiency factor
+      const pitchDiffFromOptimal = Math.abs(alpha - OPTIMAL_PITCH_DEG);
+      if (pitchDiffFromOptimal < 5.0) {
+        cl *= 1.08; // Sweet spot lift cushion
+        cd *= 0.92;
+      }
 
       // Stalling or over-rotation penalties
-      if (alpha > 40) {
-        cl *= 0.5; // stall
-        cd *= 1.8;
-      } else if (alpha < -5) {
-        cl *= 0.2; // diving
+      if (alpha > 42) {
+        cl *= 0.45; // stall
+        cd *= 2.0;
+      } else if (alpha < -6) {
+        cl *= 0.15; // diving
       }
+
+      this.flightLiftRatio = Math.max(0, cl / Math.max(0.1, cd));
 
       // Aerodynamic forces
       const dynamicPressure = 0.5 * AIR_DENSITY * (vRel * vRel);
-      const refArea = 0.95; // skier surface area in m^2
+      const refArea = 0.98; // skier surface area in m^2
 
       const liftMag = dynamicPressure * cl * refArea;
       const dragMag = dynamicPressure * cd * refArea;
@@ -302,7 +377,6 @@
       this.jumpDistance = Math.round(ground.distance * 10) / 10;
 
       const groundAngleDeg = (ground.angle * 180) / Math.PI;
-      // Angle mismatch between skis/body and landing slope
       const pitchMismatch = Math.abs(this.pitch - groundAngleDeg);
       const impactVelocity = Math.abs(this.vy);
 
@@ -310,26 +384,22 @@
       const isTelemarkInput = (inputState && inputState.telemark) || this.wantsTelemark;
       const isLandingInput = (inputState && inputState.landing) || this.wantsLanding || isTelemarkInput;
 
-      // Crash conditions:
-      // - Severe pitch misalignment (> 30 deg)
-      // - Excessive vertical impact speed (> 14 m/s without landing stance)
-      // - No landing initiated or head-first diving
+      // Crash conditions
       const isExtremeAngle = pitchMismatch > 28 || this.pitch < -40 || this.pitch > 45;
-      const isExtremeImpact = impactVelocity > 15.0;
+      const isExtremeImpact = impactVelocity > 15.5;
 
       if (isExtremeAngle || (isExtremeImpact && !isLandingInput)) {
         this.phase = 'CRASHED';
         this.landingType = 'crash';
-        this.styleScore = 6.0 + Math.random() * 2.0; // minimal style score on fall
+        this.styleScore = 6.0 + Math.random() * 2.0;
       } else if (isTelemarkInput && pitchMismatch <= 18) {
         // Crisp Telemark landing!
         this.phase = 'LANDED';
         this.landingType = 'telemark';
-        // Base 18.0 - 19.5 style score
         const bonus = Math.max(0, (18 - pitchMismatch) * 0.1);
         this.styleScore = Math.min(20.0, Math.round((18.5 + bonus) * 2) / 2);
       } else {
-        // Two-footed landing (safe but style point deductions)
+        // Two-footed landing
         this.phase = 'LANDED';
         this.landingType = 'two-foot';
         this.styleScore = Math.round((15.5 + Math.random() * 1.5) * 2) / 2;
@@ -345,7 +415,6 @@
      * Sliding to a halt in the outrun
      */
     updateOutrun(dt, ground) {
-      // High snow friction in outrun
       const friction = this.phase === 'CRASHED' ? 14.0 : 6.5;
       const speed = Math.hypot(this.vx, this.vy);
 
@@ -364,10 +433,8 @@
       this.y = ground.y;
 
       if (this.phase === 'CRASHED') {
-        // Tumbling effect
         this.pitch += 360 * dt;
       } else {
-        // Aligned with ground
         this.pitch = (ground.angle * 180) / Math.PI;
       }
     }
@@ -387,8 +454,11 @@
         distance: this.jumpDistance,
         height: this.heightAboveGround,
         takeoffQuality: this.takeoffQuality,
+        takeoffFeedback: this.takeoffFeedback,
         landingType: this.landingType,
         styleScore: this.styleScore,
+        gate: this.currentGate,
+        flightLiftRatio: this.flightLiftRatio,
         wind: this.wind,
         trail: this.trail,
         time: this.timeInPhase
@@ -401,6 +471,7 @@
   window.SkiPhysics = {
     initJump: (hill, wind) => instance.initJump(hill, wind),
     startInrun: () => instance.startInrun(),
+    setGate: (gateNumber) => instance.setGate(gateNumber),
     triggerTakeoff: () => instance.triggerTakeoff(),
     triggerLanding: (isTelemark) => instance.triggerLanding(isTelemark),
     update: (dt, inputState) => instance.update(dt, inputState),
