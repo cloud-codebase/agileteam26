@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 8080;
 app.use(cors());
 app.use(express.json());
 
-// In-memory hill definitions with K-points, HS points, and hill records
+// In-memory hill definitions with K-points, HS points, steep profile data and hill records
 const HILLS = [
   {
     id: 'zakopane',
@@ -18,6 +18,10 @@ const HILLS = [
     hsPoint: 140,
     inrunAngle: 35.0,
     tableAngle: 10.5,
+    tableHeight: 3.2,
+    knollDrop: 3.5,
+    betaK: 35.5,
+    betaP: 38.0,
     inrunLength: 98.7,
     record: 147.0,
     recordHolder: 'Yukiya Sato',
@@ -33,6 +37,10 @@ const HILLS = [
     hsPoint: 240,
     inrunAngle: 35.1,
     tableAngle: 11.2,
+    tableHeight: 3.8,
+    knollDrop: 3.8,
+    betaK: 34.0,
+    betaP: 36.5,
     inrunLength: 133.8,
     record: 252.0,
     recordHolder: 'Ryoyu Kobayashi',
@@ -48,6 +56,10 @@ const HILLS = [
     hsPoint: 134,
     inrunAngle: 35.0,
     tableAngle: 10.5,
+    tableHeight: 3.0,
+    knollDrop: 3.2,
+    betaK: 34.8,
+    betaP: 37.5,
     inrunLength: 88.2,
     record: 139.0,
     recordHolder: 'Stefan Kraft',
@@ -63,6 +75,10 @@ const HILLS = [
     hsPoint: 137,
     inrunAngle: 35.5,
     tableAngle: 11.0,
+    tableHeight: 3.4,
+    knollDrop: 3.5,
+    betaK: 35.0,
+    betaP: 37.0,
     inrunLength: 95.5,
     record: 143.5,
     recordHolder: 'Sigurd Pettersen',
