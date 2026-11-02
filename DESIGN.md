@@ -1,82 +1,74 @@
-# DESIGN.md — Sprint 3.0 Architecture & Technical Blueprint
+# DESIGN.md — Sprint 4.0 Architecture & Technical Blueprint
 
 ## 1. System Architecture & Cloud Run Container
-- **App Type**: Tiered / Single-Container Node.js 20 Express application on Port 8080.
-- **Port & Serving**: `server.js` listens on `0.0.0.0:8080`, serves static files from `public/`, and exposes high scores / leaderboard REST API endpoints (`/api/leaderboard`, `/api/hills`).
-- **Subpath Safe Rules**: Load balancer routes `https://.../demo/index.html` -> container `/index.html`.
-  - In `index.html`: Relative assets (`href="css/style.css"`, `src="js/..."`). No leading slashes!
-  - In JS fetch calls: Relative API paths (`fetch('api/leaderboard')`, `fetch('api/hills')`). Never `/api/...`!
+- **App Type**: Tiered Single-Container Node.js 20 Express application on Port 8080 (`server.js` serves `public/` + `/api/hills`, `/api/leaderboard`).
+- **Subpath Safe Rules**: Served at `/demo/index.html`. In `index.html`: relative assets (`css/style.css`, `js/...`). In JS `fetch()`: relative API routes (`api/hills`, `api/leaderboard`) — NEVER leading slashes!
 
-## 2. Modular File Tree & Ownership (Sprint 3.0)
+## 2. Modular File Tree & Sprint 4.0 Ownership
 ```text
 ├── Dockerfile                  # Node:20-alpine container exposing port 8080 (Preserved)
 ├── package.json                # Express server dependencies (Preserved)
-├── server.js                   # Express server with /api/leaderboard, /api/hills (Preserved)
+├── server.js                   # Express server with /api/hills, /api/leaderboard (SCRUM-184 extend)
 ├── cloudbuild.yaml             # CI/CD deployment configuration (Preserved)
-├── README.md                   # Project overview & instructions (Preserved)
+├── README.md                   # Project overview (Preserved)
 └── public/
-    ├── index.html              # Shell, HUD overlays, #takeoff-timing-bar, #takeoff-prompt-badge (SCRUM-181)
-    ├── css/style.css           # CRT styling, timing gauge meter, jump window & feedback badges (SCRUM-181)
+    ├── index.html              # Shell, in-flight telemetry HUD (altitude, speed, distance) (SCRUM-186)
+    ├── css/style.css           # Telemetry HUD gauges, slope altitude radar, CRT styling (SCRUM-186)
     └── js/
-        ├── hills.js            # Hill data (takeoff lip thresholds, warnZone, sweetSpot) (SCRUM-180)
-        ├── renderer.js         # Take-off edge lip, warning track, guide flags, sweet spot glow (SCRUM-180)
-        ├── physics.js          # Take-off aerodynamic lift impulse, flight glide overhaul (SCRUM-182)
-        ├── game.js             # Real-time timing meter tracking, input triggers, HUD binding (SCRUM-182)
-        ├── audio.js            # Synthesized launch chime, timing rating SFX, aero glide wind (SCRUM-182)
+        ├── hills.js            # Steep FIS landing slope profiles, knoll drop, elevation functions (SCRUM-184)
+        ├── physics.js          # Immediate landing bug fix, takeoff clearance window, glide physics (SCRUM-185)
+        ├── game.js             # Telemetry binding, flight HUD updates, landing state sync (SCRUM-185)
+        ├── renderer.js         # Dynamic camera slope tracking, steep terrain & FIS markers (SCRUM-186)
+        ├── audio.js            # Web Audio SFX (Preserved)
         └── tournament.js       # FIS tournament & judge scoring (Preserved)
 ```
 
-## 3. Sprint 3.0 Feature Specification: Take-Off Edge & Jump Timing Engine
-*Feedback*: "Make the take-off point more clear. When is the best time to press jump? Where is the edge? Users are jumping down right after start instead of flying."
+## 3. Sprint 4.0 Feature Specifications & Root Cause Fixes
+*Feedback*: "The player is not really jumping after pressing jump - even when space is pressed on sweet spot. The player immediately lands instead of falling down the hill. Hill design is too flat."
 
-### A. Take-Off Edge Visualization & Hill Data (`renderer.js`, `hills.js` - SCRUM-180)
-- **`hills.js` extensions**: Add `takeoffConfig: { warningZoneLen: 12.0, sweetSpotLen: 2.8, lipHeight: 3.0 }` to each hill profile.
-- **`renderer.js` extensions**:
-  - `_drawTakeoffZone(ctx, hill, inrunPoints)`:
-    - High-contrast edge lip at table exit `(x=0, y=0)`: bright neon red/amber edge stop block with vertical marker flags (`🚩 EDGE / TAKEOFF`).
-    - Inrun warning track: 12m preceding edge rendered with alternating red/white safety chevrons / stripes along the track bed.
-    - Sweet Spot Glow: 0.5m-3.0m before lip marked with glowing cyan/lime neon border and dynamic pulsation when skier enters zone.
-    - Camera framing: Maintain smooth zoom transition so table lip is distinctly visible ahead of skier before launch.
+### A. Hill Geometry Redesign & Steep FIS Slope Profiles (`hills.js`, `server.js` - SCRUM-184)
+- **Problem**: Previous profile had flat table exit ($yP = P \cdot \tan(26^\circ)$ with flat ease $0.15t + 0.85t^{2.1}$) right after lip ($x=0$), causing table lip drop to quickly intersect with launch trajectory.
+- **Steep FIS Profile Overhaul**:
+  - Table drop ($h_t \approx 3.0\text{m} - 3.8\text{m}$): Immediate vertical drop-off below lip at $x=0$, starting knoll (*bula*) below $y=h_t$.
+  - Knoll (*bula*) curve ($0 \le x \le P$): Quadratic drop accelerating quickly to $35^\circ - 38^\circ$. At $x=0^+$, slope is already $11.5^\circ - 14^\circ$, dropping steeply.
+  - Steep Landing Zone ($P \le x \le K$): Sustained FIS landing incline ($\beta = 34^\circ - 38^\circ$).
+  - Transition zone ($K \le x \le HS$): Radius curve easing from $35^\circ$ to $30^\circ$.
+  - Outrun ($x > HS$): Smooth transition into horizontal flat deceleration basin ($x > HS + 40$).
+- **API / Interface Contracts**:
+  - Export `HillData.getGroundY(hill, x)` and `HillData.getGroundSlopeAngle(hill, x)` directly in `hills.js` (used uniformly by `physics.js` & `renderer.js`).
+  - Update `server.js` `/api/hills` seed data with steep profile properties (`knollDrop: 3.5, betaK: 35.5, betaP: 38.0`).
 
-### B. Take-Off Timing HUD Gauge & Feedback Badges (`index.html`, `style.css` - SCRUM-181)
-- **DOM Additions in `index.html`** (inside `.viewport-wrapper`):
-  - `#takeoff-hud-container`: Positioned prominently below top HUD or over center inrun view during INRUN phase.
-  - `#takeoff-timing-bar`: Progress gauge tracking distance to edge (100% -> 0%).
-    - Zones: `.zone-early` (gray/amber), `.zone-sweet` (neon green/cyan), `.zone-late` (red).
-    - `#takeoff-needle`: Live moving marker indicating current position.
-  - `#takeoff-prompt-badge`: Large retro pulsing alert appearing when entering sweet spot (`"⚡ JUMP NOW! [SPACE / CLICK] ⚡"`).
-  - `#takeoff-feedback-badge`: Rating popup on takeoff (`PERFECT! (+LIFT)`, `GREAT!`, `EARLY`, `LATE`, `MISSED`).
-- **CSS Styling in `style.css`**:
-  - CRT neon glowing borders, retro monospace font, pulsing animations (`@keyframes jumpPulse`, `@keyframes sweetGlow`).
-  - Rating badge color schemes: `#22c55e` (Perfect), `#38bdf8` (Great), `#eab308` (Early), `#ef4444` (Late).
+### B. Immediate Landing Bug Fix & Aerodynamic Flight Trajectory (`physics.js`, `game.js` - SCRUM-185)
+- **Root Cause of Immediate Landing**:
+  1. `getGroundY` returned 0 at $x \le 0$ and close to 0 right past lip, so any slight downward $v_y$ or discrete Euler step immediately triggered `groundClearance <= 0.05` within 1–2 physics frames after takeoff.
+  2. No clearance immunity window existed immediately after exiting the inrun table.
+- **Kinematic & Collision Overhaul**:
+  - **Takeoff Clearance Grace Period**: In `_updateFlight(dt)`: Ground collision is **IGNORED** while $x < 12.0\text{m}$ OR $t_{\text{flight}} < 0.65\text{s}$ unless vertical speed is downwards and clearance is negative.
+  - **Descend-Only Collision Trigger**: Collision with ground is ONLY evaluated when jumper is descending into terrain: `groundClearance <= 0.15 && state.vy > 0 && state.x > 8.0`.
+  - **True World Coordinates**: Lip at $(x=0, y=0)$. Table base ground at $x=0$ starts at $y = \text{tableHeight} \approx 3.0\text{m}-3.8\text{m}$.
+  - **Flight Aerodynamics & Glide Cushion**: Lift-to-drag maintains skier floating $1.8\text{m} - 4.5\text{m}$ above the descending slope across $0 < x < K$, with controllable pitch ($\theta$) giving authentic DSJ floating feel.
+  - **`game.js` Telemetry**: Track and publish `groundClearance`, `flightAltitude`, and `flightSpeed` to state and HUD.
 
-### C. Take-Off Physics Engine Overhaul & Launch SFX (`physics.js`, `game.js`, `audio.js` - SCRUM-182)
-- **`physics.js` Overhaul**:
-  - Jump impulse calculation: Base upward lift impulse boosted from 2.2 m/s to 4.5–5.8 m/s depending on timing quality.
-  - Aerodynamic initial glide: Skier exits table with positive initial lift-to-drag angle, eliminating immediate ground plunge.
-  - Timing Window:
-    - `0.2m - 2.8m` before edge: `PERFECT!` (1.20x lift boost, clean V-style trajectory).
-    - `2.8m - 6.0m`: `GOOD` (1.05x lift boost).
-    - `> 6.0m`: `EARLY` (0.85x lift boost).
-    - Passed edge `< 0.0m`: `LATE` (0.80x lift boost).
-    - No jump pressed: `MISSED` (0.65x downward slide off lip).
-- **`game.js` Synchronization**:
-  - Real-time updates of `#takeoff-needle` and `#takeoff-prompt-badge` during `INRUN`.
-  - Multi-input responsiveness (Space, Enter, Click, Touch, Action Button).
-  - Activate `#takeoff-feedback-badge` with accuracy text.
-- **`audio.js` Extensions**:
-  - `playTakeoffRating(quality)`: High pitch chime for PERFECT, melodic tone for GOOD, low dull thud for EARLY/LATE.
-  - `playTakeoffLaunch()`: Enhanced satisfying dynamic air whoosh + ski pop.
+### C. Camera Slope Tracking, Steep Terrain Visuals & Telemetry HUD (`renderer.js`, `index.html`, `style.css` - SCRUM-186)
+- **Camera Tracking**:
+  - During `FLIGHT`, camera smoothly tracks skier along steep descending mountain grade ($y$ descent), keeping skier in upper-center third with visible terrain drop below.
+  - Zoom scaling expands dynamically: `targetScale = 2.65` during high flight, framing both skier and slope drop.
+- **Steep Hill Rendering**:
+  - High-contrast table drop face ($3\text{m}-4\text{m}$ deep dark metallic/stone wall below lip).
+  - Clear painted FIS landing lines across steep slope: P-point (blue), K-point (bright red), HS-point (neon yellow/gold), Hill Record (emerald green).
+- **In-Flight Telemetry HUD**:
+  - DOM in `index.html`: `#flight-telemetry-hud` with `#telemetry-altitude` (meters above slope), `#telemetry-speed` (km/h), `#telemetry-glide-ratio`.
+  - Styling in `style.css`: Compact translucent CRT radar overlay with neon green/cyan readouts, active during `FLIGHT` phase.
 
 ## 4. Subpath Safety & Robustness Checklist
 - [x] Relative paths only: `index.html` uses `css/style.css` and `js/...`
-- [x] Relative fetch calls: `api/leaderboard`, `api/hills` (no leading slash)
+- [x] Relative fetch calls: `api/leaderboard`, `api/hills` (never leading slash)
 - [x] 100% Procedural canvas visuals & Web Audio synthesis (zero external asset dependencies)
-- [x] Defensive DOM lookups (`DOMContentLoaded`, null-checks on every getElementById)
+- [x] Defensive DOM lookups (`DOMContentLoaded`, null-checks on every element)
 
-## 5. Task-to-File Mapping & Parallel Waves (Sprint 3.0)
+## 5. Task-to-File Mapping & Parallel Waves (Sprint 4.0)
 | Task ID | Developer Focus | Target Files | Wave |
 |---|---|---|---|
-| `SCRUM-180` | Take-Off Edge High-Contrast Lip, Warning Track & Lip Flags | `public/js/hills.js`, `public/js/renderer.js` (Modify/Extend) | Wave 1 (Parallel) |
-| `SCRUM-181` | Take-Off Timing HUD Gauge, On-Screen Jump Window & Feedback Badges | `public/index.html`, `public/css/style.css` (Modify/Extend) | Wave 1 (Parallel) |
-| `SCRUM-182` | Take-Off Physics Lift Overhaul, Responsive Inputs & Launch Audio | `public/js/physics.js`, `public/js/game.js`, `public/js/audio.js` (Modify/Extend) | Wave 2 |
+| `SCRUM-184` | Steep FIS Hill Profiles, Knoll Drop-off & Elevation Functions | `public/js/hills.js`, `server.js` (Modify/Extend) | Wave 1 (Parallel) |
+| `SCRUM-185` | Immediate Landing Bug Fix, Flight Clearance Window & Glide Physics | `public/js/physics.js`, `public/js/game.js` (Modify/Extend) | Wave 1 (Parallel) |
+| `SCRUM-186` | Dynamic Camera Slope Tracking, Steep Terrain Visuals & In-Flight HUD | `public/js/renderer.js`, `public/index.html`, `public/css/style.css` (Modify/Extend) | Wave 2 |
