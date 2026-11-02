@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkiJump2 - Deluxe Ski Jump 2002 Retro Edition</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛷️</text></svg>">
+</head>
+<body class="crt-filter">
+
+  <!-- Scanline CRT Overlay Container -->
+  <div class="crt-overlay"></div>
+
+  <div id="appContainer" class="game-wrapper">
+
+    <!-- Top Retro Broadcast Header Bar -->
+    <header class="retro-header">
+      <div class="header-branding">
+        <div class="header-logo">
+          <span class="logo-red">SKI</span><span class="logo-white">JUMP</span><span class="logo-badge">2.0</span>
+        </div>
+        <div class="polish-flag-badge" title="Polska - Małyszomania 2002">
+          <div class="flag-white"></div>
+          <div class="flag-red"></div>
+        </div>
+      </div>
+
+      <div class="hill-selector-group">
+        <label for="hillSelect" class="hud-label">SKOCZNIA:</label>
+        <select id="hillSelect" class="retro-select">
+          <option value="zakopane">Zakopane (K-120 / HS-134)</option>
+          <option value="wisla">Wisła - Malinka (K-105 / HS-120)</option>
+          <option value="planica">Planica (K-185 / HS-215)</option>
+          <option value="oberstdorf">Oberstdorf (K-115 / HS-130)</option>
+        </select>
+      </div>
+
+      <div class="mode-selector-group">
+        <label for="modeSelect" class="hud-label">TRYB:</label>
+        <select id="modeSelect" class="retro-select">
+          <option value="TRAINING">Trening (Pojedynczy skok)</option>
+          <option value="WORLD_CUP">Puchar Świata (Turniej)</option>
+        </select>
+      </div>
+
+      <div class="header-actions">
+        <button id="customizerBtn" class="retro-btn" title="Dostosuj skoczka">👤 SKOCZEK</button>
+        <button id="standingsBtn" class="retro-btn" title="Tabela turniejowa">🏆 TABELA</button>
+        <button id="soundToggleBtn" class="retro-btn btn-icon" title="Wycisz/Włącz dźwięk">🔊 DŹWIĘK</button>
+      </div>
+    </header>
+
+    <!-- Main Viewport and Retro HUD Layer -->
+    <main class="viewport-section">
+      <div class="canvas-container">
+        <!-- 960x540 Primary Retro Canvas -->
+        <canvas id="gameCanvas" width="960" height="540"></canvas>
+
+        <!-- Dynamic In-Game HUD Overlays -->
+        <div class="hud-layer">
+
+          <!-- Top-Left: Hill Info & Status -->
+          <div class="hud-box hill-info-box">
+            <div id="hillNameDisplay" class="hud-title">Zakopane K-120</div>
+            <div class="hud-sub">
+              <span>HS: <b id="hillHsDisplay">134.0m</b></span> | 
+              <span>REKORD: <b id="hillRecordDisplay">138.5m</b></span>
+            </div>
+          </div>
+
+          <!-- Top-Right: Wind Indicator Gauge (Wind Vane) -->
+          <div class="hud-box wind-gauge-box">
+            <div class="hud-sub-title">WIATR</div>
+            <div class="wind-content">
+              <div id="windVane" class="wind-vane-compass" title="Kierunek i siła wiatru">
+                <div id="windArrow" class="vane-arrow"></div>
+              </div>
+              <div class="wind-readout">
+                <div id="windSpeed" class="hud-value">0.0 m/s</div>
+                <div id="windAngle" class="hud-sub">0° (Czołowy)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom-Left: Live Speed & Altitude / Phase Indicator -->
+          <div class="hud-box metrics-box">
+            <div class="metric-row">
+              <span class="hud-label">PRĘDKOŚĆ:</span>
+              <span id="speedMeter" class="hud-value-large">0.0 km/h</span>
+            </div>
+            <div class="metric-row">
+              <span class="hud-label">STATUS:</span>
+              <span id="jumpPhase" class="hud-status-badge phase-gate">BELKA STARTOWA</span>
+            </div>
+          </div>
+
+          <!-- Bottom-Center: Live Action Instructions Prompter -->
+          <div id="actionPrompter" class="action-prompter-box">
+            <span class="prompter-blink">[SPACJA / LEWY KLIK]</span> ABY ROZPOCZĄĆ NAJAZD
+          </div>
+
+          <!-- Bottom-Right: Jump Distance Display -->
+          <div class="hud-box distance-box">
+            <div class="hud-label">ODLEGŁOŚĆ:</div>
+            <div id="distanceMeter" class="hud-value-huge">0.0 m</div>
+          </div>
+
+        </div>
+
+        <!-- Center Scoreboard & 5-Judge Scores Card (Shown upon landing) -->
+        <div id="judgeScoresPanel" class="judge-scores-overlay hidden">
+          <div class="retro-window">
+            <div class="retro-window-header">
+              <span class="window-title">NOTA SĘDZIOWSKA FIS</span>
+              <button id="closeScoresBtn" class="window-close-btn">&times;</button>
+            </div>
+            <div class="retro-window-body">
+              <div class="jump-summary-row">
+                <div class="summary-metric">
+                  <div class="summary-label">ODLEGŁOŚĆ</div>
+                  <div id="summaryDistance" class="summary-val highlight">134.5 m</div>
+                  <div id="summaryDistancePoints" class="summary-sub">86.1 pkt</div>
+                </div>
+                <div class="summary-metric">
+                  <div class="summary-label">STYL / LĄDOWANIE</div>
+                  <div id="summaryLandingType" class="summary-val">TELEMARK</div>
+                  <div id="summaryStylePoints" class="summary-sub">56.5 pkt</div>
+                </div>
+                <div class="summary-metric">
+                  <div class="summary-label">ŁĄCZNA NOTA</div>
+                  <div id="totalPointsDisplay" class="summary-val-gold">142.6 pkt</div>
+                  <div id="summaryWindComp" class="summary-sub">Wiatr: +0.0 pkt</div>
+                </div>
+              </div>
+
+              <div class="judges-list-header">OCENY SĘDZIÓW (ODRZUCANA NAJNIŻSZA I NAJWYŻSZA):</div>
+              <div id="judgesList" class="judges-grid">
+                <!-- Dynamically populated 5 judges -->
+                <div class="judge-card">
+                  <span class="judge-country">POL</span>
+                  <span class="judge-mark">19.0</span>
+                </div>
+                <div class="judge-card">
+                  <span class="judge-country">GER</span>
+                  <span class="judge-mark">18.5</span>
+                </div>
+                <div class="judge-card">
+                  <span class="judge-country">AUT</span>
+                  <span class="judge-mark">19.0</span>
+                </div>
+                <div class="judge-card">
+                  <span class="judge-country">FIN</span>
+                  <span class="judge-mark">18.5</span>
+                </div>
+                <div class="judge-card">
+                  <span class="judge-country">NOR</span>
+                  <span class="judge-mark">19.0</span>
+                </div>
+              </div>
+
+              <div class="scores-actions">
+                <button id="nextJumpBtn" class="retro-btn btn-primary">KOLEJNY SKOK [SPACJA]</button>
+                <button id="submitScoreBtn" class="retro-btn">ZAPISZ REKORD DO TABELI</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Bottom Controls & Keybindings Info Bar -->
+    <footer class="retro-footer">
+      <div class="controls-guide">
+        <span class="guide-item"><kbd>SPACJA</kbd> / <kbd>L-KLIK</kbd> = Belka / Wybicie / Telemark</span>
+        <span class="guide-item"><kbd>P-KLIK</kbd> / <kbd>L</kbd> = Lądowanie na dwie nogi</span>
+        <span class="guide-item"><kbd>▲</kbd><kbd>▼</kbd> / <kbd>Myszka</kbd> = Balans w locie (kąt natarcia)</span>
+      </div>
+      <div class="footer-meta">
+        <span>SkiJump2 &bull; DSJ2 Retro Tribute &bull; Małyszomania Forever</span>
+      </div>
+    </footer>
+
+    <!-- Modal: Jumper Customization Panel -->
+    <div id="customizerPanel" class="retro-modal hidden">
+      <div class="retro-window modal-window">
+        <div class="retro-window-header">
+          <span class="window-title">GARDEROBA SKOCZKA (POLSKA 2002)</span>
+          <button id="closeCustomizerBtn" class="window-close-btn">&times;</button>
+        </div>
+        <div class="retro-window-body">
+          <div class="customizer-layout">
+            <div class="customizer-preview">
+              <div class="jumper-avatar-preview">
+                <div id="avatarHelmet" class="avatar-helmet"></div>
+                <div id="avatarFace" class="avatar-face">
+                  <div id="avatarMustache" class="avatar-mustache"></div>
+                </div>
+                <div id="avatarSuit" class="avatar-suit">
+                  <div class="suit-flag-stripe"></div>
+                </div>
+              </div>
+              <div class="avatar-caption">Reprezentant Polski</div>
+            </div>
+            
+            <form id="customizerForm" class="customizer-form" onsubmit="return false;">
+              <div class="form-group">
+                <label for="playerNameInput" class="form-label">NAZWISKO SKOCZKA:</label>
+                <input type="text" id="playerNameInput" class="retro-input" value="Adam Małysz" maxlength="25">
+              </div>
+
+              <div class="form-group">
+                <label for="suitColorSelect" class="form-label">KOLOR KOMBINEZONU:</label>
+                <select id="suitColorSelect" class="retro-select">
+                  <option value="#d63031">Biało-Czerwony (Polska Klasyk)</option>
+                  <option value="#0984e3">Niebieski (Retro FIS)</option>
+                  <option value="#2ed573">Limonkowy (Hannawald Look)</option>
+                  <option value="#fdcb6e">Złoto-Żółty (Martin Schmitt)</option>
+                  <option value="#2d3436">Czarny Karbon</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="helmetColorSelect" class="form-label">KOLOR KASKU:</label>
+                <select id="helmetColorSelect" class="retro-select">
+                  <option value="#ffffff">Czysta Biel (Red Bull / Polska)</option>
+                  <option value="#d63031">Czerwień</option>
+                  <option value="#ffd32a">Słoneczny Żółty</option>
+                  <option value="#1e272e">Głęboki Grafit</option>
+                </select>
+              </div>
+
+              <div class="form-group-checkbox">
+                <input type="checkbox" id="mustacheToggle" checked>
+                <label for="mustacheToggle" class="checkbox-label">LEGENDARNY WĄS (+10 do aerodynamiki) ✨</label>
+              </div>
+
+              <div class="modal-buttons">
+                <button type="button" id="saveCustomizerBtn" class="retro-btn btn-primary">ZAPISZ I ZAMKNIJ</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Tournament Standings & World Cup Leaderboard -->
+    <div id="tournamentModal" class="retro-modal hidden">
+      <div class="retro-window modal-window-wide">
+        <div class="retro-window-header">
+          <span class="window-title" id="tournamentTitle">PUCHAR ŚWIATA - KLASYFIKACJA GENERALNA</span>
+          <button id="closeTournamentBtn" class="window-close-btn">&times;</button>
+        </div>
+        <div class="retro-window-body">
+          <div class="tournament-info-banner">
+            <span id="tournamentRoundStatus">Skocznia 1 z 3 &bull; Seria 1</span>
+            <span class="world-cup-globe">🌍 FIS World Cup 2002</span>
+          </div>
+
+          <div class="table-scroll-container">
+            <table class="retro-table" id="leaderboardTable">
+              <thead>
+                <tr>
+                  <th style="width: 45px;">M-CE</th>
+                  <th>SKOCZEK</th>
+                  <th style="width: 60px;">KRAJ</th>
+                  <th style="width: 90px;">ODLEGŁOŚĆ</th>
+                  <th style="width: 90px;">NOTA SKOKU</th>
+                  <th style="width: 80px;">PUNKTY PŚ</th>
+                </tr>
+              </thead>
+              <tbody id="standingsTableBody">
+                <!-- Dynamically generated rows -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="modal-buttons">
+            <button id="restartTournamentBtn" class="retro-btn">RESETUJ TURNIEJ</button>
+            <button id="resumeTournamentBtn" class="retro-btn btn-primary">WRÓĆ DO GRY</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Mandatory Script Loading Hierarchy (Design Document Specification) -->
+  <!-- Relative paths ONLY (No leading slashes for Cloud Run reverse proxy compatibility) -->
+  <script src="js/audio.js"></script>
+  <script src="js/hills.js"></script>
+  <script src="js/physics.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/tournament.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
