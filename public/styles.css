@@ -1,0 +1,551 @@
+/* ===================================================================
+   Cyber-Classical Fencing Arena Stylesheet
+   Adheres to DESIGN.md exact IDs and responsive styling
+   =================================================================== */
+
+:root {
+  --bg-primary: #0a0f1d;
+  --bg-secondary: #131b2e;
+  --bg-card: #1c2742;
+  --piste-surface: #273553;
+  --piste-lines: #4d648d;
+  --piste-warning: #d97706;
+  --accent-gold: #fbbf24;
+  --accent-silver: #e2e8f0;
+  --fencer-p1-glow: #38bdf8;
+  --fencer-p1-light: #0284c7;
+  --fencer-p2-glow: #f87171;
+  --fencer-p2-light: #dc2626;
+  --light-off: #1e293b;
+  --light-green: #22c55e;
+  --light-red: #ef4444;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --border-color: rgba(255, 255, 255, 0.12);
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  font-family: var(--font-family);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  overflow-x: hidden;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 100%, rgba(248, 113, 113, 0.08) 0%, transparent 60%);
+  background-attachment: fixed;
+}
+
+/* Header & Top Bar */
+.arena-header {
+  width: 100%;
+  max-width: 1060px;
+  padding: 1.25rem 1rem 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.brand-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brand-icon {
+  font-size: 1.75rem;
+  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.5));
+}
+
+.brand-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #ffffff 0%, var(--accent-gold) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.brand-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.header-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-header {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+}
+
+.btn-header:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--accent-gold);
+}
+
+/* Arena Main Layout */
+.arena-container {
+  width: 100%;
+  max-width: 1060px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* FIE Scoreboard & Apparatus */
+.scoreboard-apparatus {
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  padding: 0.75rem 1.5rem;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1.5rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+.fencer-panel {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.fencer-panel.p1 {
+  justify-content: flex-start;
+}
+
+.fencer-panel.p2 {
+  justify-content: flex-end;
+  flex-direction: row-reverse;
+}
+
+.fencer-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.fencer-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.fencer-panel.p1 .fencer-name {
+  color: var(--fencer-p1-glow);
+}
+
+.fencer-panel.p2 .fencer-name {
+  color: var(--fencer-p2-glow);
+  text-align: right;
+  justify-content: flex-end;
+}
+
+.fencer-country {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+}
+
+.score-badge {
+  background: #000000;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  min-width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 2.25rem;
+  font-weight: 900;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
+#p1Score {
+  color: var(--fencer-p1-glow);
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+}
+
+#p2Score {
+  color: var(--fencer-p2-glow);
+  text-shadow: 0 0 10px rgba(248, 113, 113, 0.6);
+}
+
+/* Apparatus Touché Lights */
+.touche-indicator {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background-color: var(--light-off);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.1s ease;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* Light triggers */
+#p1Indicator.active {
+  background-color: var(--light-green);
+  border-color: #86efac;
+  box-shadow: 0 0 18px var(--light-green), inset 0 0 8px #ffffff;
+}
+
+#p2Indicator.active {
+  background-color: var(--light-red);
+  border-color: #fca5a5;
+  box-shadow: 0 0 18px var(--light-red), inset 0 0 8px #ffffff;
+}
+
+/* Center Bout Clock & Referee Status */
+.apparatus-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.match-clock {
+  font-family: var(--font-mono);
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--accent-gold);
+  background: #050811;
+  padding: 0.2rem 1rem;
+  border-radius: 6px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.9);
+}
+
+.referee-box {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.25rem 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 170px;
+}
+
+.referee-status {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffffff;
+  animation: pulse-referee 2s infinite ease-in-out;
+}
+
+@keyframes pulse-referee {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 1; }
+}
+
+/* Canvas Viewport */
+.canvas-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 960 / 400;
+  background: #070c18;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#pisteCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Canvas Overlay Announcements */
+.piste-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  font-size: 2.5rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #ffffff;
+  text-shadow: 0 0 20px rgba(0, 0, 0, 0.8), 0 0 35px var(--accent-gold);
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.piste-overlay.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.05);
+}
+
+/* Bout Controls & Status Action Bar */
+.action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.65rem;
+}
+
+.btn-primary, .btn-secondary {
+  padding: 0.55rem 1.15rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--accent-gold);
+}
+
+.stats-summary {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.stats-badge {
+  font-family: var(--font-mono);
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+/* Controls Grid / Instructions */
+.controls-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.controls-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0.85rem 1.15rem;
+}
+
+.controls-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.controls-card.p1 .controls-title {
+  color: var(--fencer-p1-glow);
+}
+
+.controls-card.p2 .controls-title {
+  color: var(--fencer-p2-glow);
+}
+
+.keys-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.key-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+kbd {
+  background: #0f172a;
+  color: var(--accent-gold);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  border-radius: 3px;
+  padding: 0.1rem 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Modal Overlay (Controls & Rules) */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-box {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  max-width: 580px;
+  width: 100%;
+  padding: 1.5rem;
+  position: relative;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+}
+
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: #ffffff;
+}
+
+.modal-box h3 {
+  font-size: 1.25rem;
+  color: var(--accent-gold);
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modal-content {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: #cbd5e1;
+}
+
+.modal-content p {
+  margin-bottom: 0.65rem;
+}
+
+.modal-content ul {
+  padding-left: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.modal-content li {
+  margin-bottom: 0.35rem;
+}
+
+/* Footer */
+.arena-footer {
+  width: 100%;
+  max-width: 1060px;
+  padding: 1.5rem 1rem;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-color);
+  margin-top: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .scoreboard-apparatus {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  .fencer-panel.p2 {
+    justify-content: flex-start;
+    flex-direction: row;
+  }
+  .fencer-panel.p2 .fencer-name {
+    text-align: left;
+    justify-content: flex-start;
+  }
+  .apparatus-center {
+    order: -1;
+  }
+  .controls-grid {
+    grid-template-columns: 1fr;
+  }
+}

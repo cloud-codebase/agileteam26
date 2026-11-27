@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cyber Fencing Duel — Two-Player Olympic Piste</title>
+  <!-- Relative stylesheet path per Subpath Safety rules -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Arena Header -->
+  <header class="arena-header">
+    <div class="brand-wrapper">
+      <span class="brand-icon">🤺</span>
+      <div>
+        <h1 class="brand-title">Cyber Fencing Duel</h1>
+        <div class="brand-subtitle">FIE Olympic Piste Combat Simulator</div>
+      </div>
+    </div>
+    <div class="header-controls">
+      <button id="btnToggleAudio" class="btn-header" aria-label="Toggle Sound">
+        <span id="audioIcon">🔊</span> Sound
+      </button>
+      <button id="btnShowRules" class="btn-header" aria-label="View Fencing Rules">
+        📖 Rules
+      </button>
+      <button id="btnShowControls" class="btn-header" aria-label="View Controls">
+        🎮 Controls
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Combat Arena -->
+  <main class="arena-container">
+
+    <!-- FIE Scoring Apparatus & Scoreboard -->
+    <section class="scoreboard-apparatus" aria-label="Fencing Scoreboard">
+      
+      <!-- Player 1 Side (Left) -->
+      <div class="fencer-panel p1">
+        <div class="touche-indicator" id="p1Indicator" title="P1 Touché Indicator"></div>
+        <div class="score-badge" id="p1Score">0</div>
+        <div class="fencer-info">
+          <div class="fencer-name">P1 Épéeiste</div>
+          <div class="fencer-country">FRA / BLUE</div>
+        </div>
+      </div>
+
+      <!-- Center Match Clock & Referee Status -->
+      <div class="apparatus-center">
+        <div class="match-clock" id="matchClock">03:00</div>
+        <div class="referee-box" id="refereeBox">
+          <span class="referee-status" id="refereeStatus">En Garde!</span>
+        </div>
+      </div>
+
+      <!-- Player 2 Side (Right) -->
+      <div class="fencer-panel p2">
+        <div class="touche-indicator" id="p2Indicator" title="P2 Touché Indicator"></div>
+        <div class="score-badge" id="p2Score">0</div>
+        <div class="fencer-info">
+          <div class="fencer-name">P2 Saberiste</div>
+          <div class="fencer-country">ITA / RED</div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Canvas Viewport for Piste & Fencers -->
+    <section class="canvas-wrapper">
+      <!-- 960x400 Canvas per DESIGN.md -->
+      <canvas id="pisteCanvas" width="960" height="400" aria-label="Fencing Piste Strip"></canvas>
+      <div class="piste-overlay" id="pisteAnnouncement">TOUCHÉ!</div>
+    </section>
+
+    <!-- Action Bar & Match Stats -->
+    <section class="action-bar">
+      <div class="action-buttons">
+        <button id="btnStartMatch" class="btn-primary">
+          ▶ Start Match
+        </button>
+        <button id="btnResetMatch" class="btn-secondary">
+          ↺ Reset Bout
+        </button>
+      </div>
+
+      <div class="stats-summary">
+        <span>Bouts: <strong id="statBouts" class="stats-badge">0</strong></span>
+        <span>P1 Wins: <strong id="statP1Wins" class="stats-badge">0</strong></span>
+        <span>P2 Wins: <strong id="statP2Wins" class="stats-badge">0</strong></span>
+      </div>
+    </section>
+
+    <!-- Quick Reference Controls Grid -->
+    <section class="controls-grid">
+      <div class="controls-card p1">
+        <div class="controls-title">🟦 Player 1 (Blue) Controls</div>
+        <div class="keys-list">
+          <div class="key-item"><kbd>A</kbd> Retreat</div>
+          <div class="key-item"><kbd>D</kbd> Advance</div>
+          <div class="key-item"><kbd>W</kbd> High Zasłona</div>
+          <div class="key-item"><kbd>S</kbd> Low Zasłona</div>
+          <div class="key-item"><kbd>E</kbd> Thrust / Lunge</div>
+        </div>
+      </div>
+      <div class="controls-card p2">
+        <div class="controls-title">🟥 Player 2 (Red) Controls</div>
+        <div class="keys-list">
+          <div class="key-item"><kbd>←</kbd> Advance</div>
+          <div class="key-item"><kbd>→</kbd> Retreat</div>
+          <div class="key-item"><kbd>↑</kbd> High Zasłona</div>
+          <div class="key-item"><kbd>↓</kbd> Low Zasłona</div>
+          <div class="key-item"><kbd>Space</kbd> Thrust / Lunge</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Controls Modal -->
+  <div class="modal-overlay" id="controlsModal">
+    <div class="modal-box">
+      <button class="modal-close" id="btnCloseControls" aria-label="Close Controls Modal">&times;</button>
+      <h3>🎮 Combat Controls</h3>
+      <div class="modal-content">
+        <p><strong>Two players duel locally on the same keyboard:</strong></p>
+        <ul>
+          <li><strong>Player 1 (Left, Blue)</strong>:
+            <code>A</code> (Retreat), <code>D</code> (Advance), <code>W</code> (High Zasłona), <code>S</code> (Low Zasłona), <code>E</code> (Thrust)
+          </li>
+          <li><strong>Player 2 (Right, Red)</strong>:
+            <code>←</code> (Advance), <code>→</code> (Retreat), <code>↑</code> (High Zasłona), <code>↓</code> (Low Zasłona), <code>Space</code> (Thrust)
+          </li>
+        </ul>
+        <p>Neutral stance holds the blade centered. Holding High or Low Zasłona raises/lowers the guard angle to parry incoming attacks!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rules Modal -->
+  <div class="modal-overlay" id="rulesModal">
+    <div class="modal-box">
+      <button class="modal-close" id="btnCloseRules" aria-label="Close Rules Modal">&times;</button>
+      <h3>⚔️ Fencing Rules & Zasłona Mechanics</h3>
+      <div class="modal-content">
+        <p><strong>Victory Condition:</strong> First fencer to reach <strong>5 touchés</strong> wins the match, or whoever leads when the 3-minute bout timer expires.</p>
+        <p><strong>Attack & Zasłona Defense:</strong></p>
+        <ul>
+          <li><strong>Thrust (Lunge):</strong> Extends your blade toward the opponent's torso hitbox.</li>
+          <li><strong>Zasłona (Parry):</strong> Deflecting the opponent's blade with your weapon prevents the touché and leaves the attacker vulnerable to a counter-riposte.</li>
+          <li><strong>Strip Boundaries:</strong> Stepping beyond the warning lines onto the run-off limit warns or resets the fencer's on-guard distance.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="arena-footer">
+    Cyber Fencing Duel &copy; 2025 • Greenfield Sprint 1.0 • Built with Canvas & Web Audio API
+  </footer>
+
+  <!-- Subpath Safe Relative Script Imports -->
+  <script src="audio.js"></script>
+  <!-- Fallback / Initializer Script for UI hooks & Piste Canvas rendering -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Toggle sound button
+      const btnToggleAudio = document.getElementById('btnToggleAudio');
+      const audioIcon = document.getElementById('audioIcon');
+      if (btnToggleAudio && window.AudioFX) {
+        btnToggleAudio.addEventListener('click', () => {
+          AudioFX.init();
+          const isMuted = AudioFX.toggleMute();
+          if (audioIcon) {
+            audioIcon.textContent = isMuted ? '🔇' : '🔊';
+          }
+        });
+      }
+
+      // Modals setup
+      const controlsModal = document.getElementById('controlsModal');
+      const rulesModal = document.getElementById('rulesModal');
+      const btnShowControls = document.getElementById('btnShowControls');
+      const btnShowRules = document.getElementById('btnShowRules');
+      const btnCloseControls = document.getElementById('btnCloseControls');
+      const btnCloseRules = document.getElementById('btnCloseRules');
+
+      if (btnShowControls && controlsModal) {
+        btnShowControls.addEventListener('click', () => controlsModal.classList.add('active'));
+      }
+      if (btnCloseControls && controlsModal) {
+        btnCloseControls.addEventListener('click', () => controlsModal.classList.remove('active'));
+      }
+      if (btnShowRules && rulesModal) {
+        btnShowRules.addEventListener('click', () => rulesModal.classList.add('active'));
+      }
+      if (btnCloseRules && rulesModal) {
+        btnCloseRules.addEventListener('click', () => rulesModal.classList.remove('active'));
+      }
+
+      // Close modal on outside click
+      [controlsModal, rulesModal].forEach(modal => {
+        if (modal) {
+          modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+              modal.classList.remove('active');
+            }
+          });
+        }
+      });
+
+      // Piste Background Initial Render (if game.js not yet loaded)
+      const canvas = document.getElementById('pisteCanvas');
+      if (canvas && !window.Game) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          drawPlaceholderPiste(ctx, canvas.width, canvas.height);
+        }
+      }
+
+      function drawPlaceholderPiste(ctx, width, height) {
+        // Strip floor
+        const stripY = height * 0.75;
+        const stripH = 30;
+
+        // Background gradient
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+        bgGrad.addColorStop(0, '#0a0f1d');
+        bgGrad.addColorStop(1, '#111a2e');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, width, height);
+
+        // Fencing Strip (Metallic piste)
+        const pisteGrad = ctx.createLinearGradient(0, stripY, 0, stripY + stripH);
+        pisteGrad.addColorStop(0, '#3a4b6e');
+        pisteGrad.addColorStop(0.5, '#263450');
+        pisteGrad.addColorStop(1, '#182236');
+        ctx.fillStyle = pisteGrad;
+        ctx.fillRect(40, stripY, width - 80, stripH);
+
+        // Strip border
+        ctx.strokeStyle = '#60a5fa';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(40, stripY, width - 80, stripH);
+
+        // Center line
+        const centerX = width / 2;
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(centerX, stripY - 10);
+        ctx.lineTo(centerX, stripY + stripH + 10);
+        ctx.stroke();
+
+        // On-guard lines (2m from center)
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 2;
+        [centerX - 140, centerX + 140].forEach(gx => {
+          ctx.beginPath();
+          ctx.moveTo(gx, stripY);
+          ctx.lineTo(gx, stripY + stripH);
+          ctx.stroke();
+        });
+
+        // Warning lines (2m before end)
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2;
+        [centerX - 360, centerX + 360].forEach(wx => {
+          ctx.beginPath();
+          ctx.moveTo(wx, stripY);
+          ctx.lineTo(wx, stripY + stripH);
+          ctx.stroke();
+        });
+
+        // Rear limit lines
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 3;
+        [40, width - 40].forEach(rx => {
+          ctx.beginPath();
+          ctx.moveTo(rx, stripY - 5);
+          ctx.lineTo(rx, stripY + stripH + 5);
+          ctx.stroke();
+        });
+
+        // Ambient banner text
+        ctx.font = '700 16px -apple-system, sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.textAlign = 'center';
+        ctx.fillText('PISTE OFFICIELLE DE COMBAT • 14m × 1.5m', centerX, stripY + 60);
+      }
+    });
+  </script>
+  <!-- Load Game classes if present (Porthos & Aramis tasks) -->
+  <script src="fencer.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
