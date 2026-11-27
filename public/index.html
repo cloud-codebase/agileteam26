@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RETRO DRIFT RACE // SYNTHWAVE RACING</title>
+  <!-- Relative link without leading slash for Cloud Run subpath safe hosting -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="arcade-cabinet">
+    <!-- Top Header Marquee -->
+    <header class="arcade-header">
+      <div class="logo-wrapper">
+        <span class="neon-sub">OUTRUN // 1986</span>
+        <h1 class="neon-title">RETRO DRIFT RACE</h1>
+      </div>
+      <div class="header-controls">
+        <button id="btn-sound-toggle" class="arcade-btn-mini" title="Toggle Sound">🔊 AUDIO</button>
+        <button id="btn-mute" class="arcade-btn-mini">MUTE: OFF</button>
+        <button id="btn-leaderboard" class="arcade-btn-mini">🏆 SCORES</button>
+      </div>
+    </header>
+
+    <!-- Main Game Viewport Container -->
+    <main id="viewport-container">
+      <canvas id="game-canvas" width="1280" height="720"></canvas>
+
+      <!-- Heads-Up Display (HUD) Overlay -->
+      <div id="hud-overlay">
+        <!-- Top HUD Bar: Score, Combo, Banked -->
+        <div class="hud-top-bar">
+          <div class="hud-stat-box score-box">
+            <span class="stat-label">DRIFT SCORE</span>
+            <span id="current-score" class="stat-value neon-cyan">0</span>
+          </div>
+
+          <div class="hud-stat-box combo-box">
+            <span class="stat-label">COMBO</span>
+            <div class="combo-row">
+              <span id="combo-multiplier" class="stat-value neon-magenta">x1.0</span>
+              <span id="drift-badge" class="drift-badge-hidden">SICK DRIFT!</span>
+            </div>
+          </div>
+
+          <div class="hud-stat-box banked-box">
+            <span class="stat-label">BANKED SCORE</span>
+            <span id="banked-score" class="stat-value neon-yellow">0</span>
+          </div>
+
+          <div class="hud-stat-box timer-box">
+            <span class="stat-label">LAP TIME</span>
+            <span id="lap-timer" class="stat-value neon-green">00:00.00</span>
+          </div>
+
+          <div class="hud-stat-box record-box">
+            <span class="stat-label">BEST DRIFT</span>
+            <span id="best-drift" class="stat-value neon-pink">0</span>
+          </div>
+        </div>
+
+        <!-- Drift Intensity Bar -->
+        <div class="drift-bar-container">
+          <div id="drift-meter-bar" class="drift-meter-fill"></div>
+        </div>
+
+        <!-- Bottom HUD: Telemetry & Cluster -->
+        <div class="hud-bottom-bar">
+          <!-- Digital Speedometer / Tachometer -->
+          <div class="telemetry-cluster">
+            <div class="gauge speed-gauge">
+              <span class="gauge-label">KM/H</span>
+              <span id="speed-val" class="gauge-value">0</span>
+            </div>
+            <div class="gauge gear-gauge">
+              <span class="gauge-label">GEAR</span>
+              <span id="gear-val" class="gauge-value">1</span>
+            </div>
+            <div class="gauge angle-gauge">
+              <span class="gauge-label">SLIP ANGLE</span>
+              <div class="angle-display">
+                <span id="drift-angle-val" class="gauge-value">0</span>°
+              </div>
+            </div>
+          </div>
+
+          <!-- Controls Mini-Guide -->
+          <div class="controls-guide">
+            <span class="key-pill">W / ↑</span> ACCEL
+            <span class="key-pill">S / ↓</span> BRAKE
+            <span class="key-pill">A / D</span> STEER
+            <span class="key-pill space-pill">SPACE</span> HANDBRAKE
+          </div>
+        </div>
+      </div>
+
+      <!-- Start / Game Over / Pause Overlay Screen -->
+      <div id="overlay-screen" class="overlay-modal active">
+        <div class="overlay-card">
+          <div class="scanlines"></div>
+          <h2 class="overlay-title glow-text">INSERT COIN</h2>
+          <p class="overlay-subtitle">SYNTHWAVE DRIFT CHALLENGE</p>
+          <div class="overlay-instructions">
+            <p>Slide through corners, maintain high drift angles, and chain combos before the drift meter expires!</p>
+            <div class="keys-display">
+              <div><strong>[W / UP]</strong> Drive</div>
+              <div><strong>[A/D / LEFT/RIGHT]</strong> Steer</div>
+              <div><strong>[SPACE]</strong> Handbrake Slide</div>
+              <div><strong>[S / DOWN]</strong> Reverse / Brake</div>
+            </div>
+          </div>
+          <div class="overlay-actions">
+            <button id="btn-start" class="arcade-button primary-btn">START RACE</button>
+            <button id="btn-restart" class="arcade-button secondary-btn" style="display: none;">TRY AGAIN</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leaderboard Modal Screen -->
+      <div id="high-score-modal" class="overlay-modal hidden">
+        <div class="overlay-card leaderboard-card">
+          <h2 class="overlay-title glow-text">TOP RACERS</h2>
+          <p class="overlay-subtitle">HALL OF DRIFT LEGENDS</p>
+          <div id="high-score-board" class="leaderboard-table-wrapper">
+            <table class="leaderboard-table">
+              <thead>
+                <tr>
+                  <th>RANK</th>
+                  <th>PILOT</th>
+                  <th>SCORE</th>
+                  <th>MAX DRIFT</th>
+                  <th>DATE</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboard-body">
+                <tr><td colspan="5">Loading high scores...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="overlay-actions">
+            <button id="btn-close-scores" class="arcade-button secondary-btn">CLOSE</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer Status Bar -->
+    <footer class="arcade-footer">
+      <span class="build-version">RETRO-DRIFT v1.0.0 // 60 FPS</span>
+      <span class="system-status">SYS READY // WASM 2D ACCELERATED</span>
+    </footer>
+  </div>
+
+  <!-- UI & Leaderboard modal script logic (defensive, subpath-safe) -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const btnLeaderboard = document.getElementById('btn-leaderboard');
+      const btnCloseScores = document.getElementById('btn-close-scores');
+      const scoreModal = document.getElementById('high-score-modal');
+      const tbody = document.getElementById('leaderboard-body');
+      const btnMute = document.getElementById('btn-mute');
+      const btnSoundToggle = document.getElementById('btn-sound-toggle');
+
+      // Fetch leaderboard using relative subpath-safe url
+      async function loadLeaderboard() {
+        if (!tbody) return;
+        try {
+          const res = await fetch('api/scores');
+          if (!res.ok) throw new Error('Failed to load scores');
+          const data = await res.json();
+          tbody.innerHTML = '';
+          data.forEach((entry, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td class="rank-col">#${idx + 1}</td>
+              <td class="name-col">${entry.name}</td>
+              <td class="score-col neon-cyan">${entry.score.toLocaleString()}</td>
+              <td class="drift-col neon-pink">${(entry.maxDrift || 0).toLocaleString()}</td>
+              <td class="date-col">${entry.date || '-'}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } catch (err) {
+          console.warn('Leaderboard fetch fallback:', err);
+          tbody.innerHTML = '<tr><td colspan="5">Offline / Local Records Only</td></tr>';
+        }
+      }
+
+      if (btnLeaderboard && scoreModal) {
+        btnLeaderboard.addEventListener('click', () => {
+          loadLeaderboard();
+          scoreModal.classList.remove('hidden');
+          scoreModal.classList.add('active');
+        });
+      }
+
+      if (btnCloseScores && scoreModal) {
+        btnCloseScores.addEventListener('click', () => {
+          scoreModal.classList.remove('active');
+          scoreModal.classList.add('hidden');
+        });
+      }
+
+      // Sync mute UI with window.RetroAudio if available
+      function toggleAudioState() {
+        if (window.RetroAudio && typeof window.RetroAudio.toggleMute === 'function') {
+          const isMuted = window.RetroAudio.toggleMute();
+          if (btnMute) btnMute.textContent = isMuted ? 'MUTE: ON' : 'MUTE: OFF';
+          if (btnSoundToggle) btnSoundToggle.textContent = isMuted ? '🔇 MUTED' : '🔊 AUDIO';
+        }
+      }
+
+      if (btnMute) btnMute.addEventListener('click', toggleAudioState);
+      if (btnSoundToggle) btnSoundToggle.addEventListener('click', toggleAudioState);
+
+      // Preload initial leaderboard
+      loadLeaderboard();
+    });
+  </script>
+
+  <!-- Modular Scripts loaded in exact design contract sequence without leading slashes -->
+  <script src="js/physics.js"></script>
+  <script src="js/track.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
